@@ -1,0 +1,11 @@
+make,model,year,category,price_per_day,available,image_url
+Toyota,Camry,2023,Sedan,50.00,true,
+Honda,CR-V,2023,SUV,65.00,true,
+Ford,F-150,2022,Truck,80.00,true,
+Chevrolet,Suburban,2022,SUV,90.00,true,
+BMW,3 Series,2023,Sedan,120.00,true,
+Toyota,HiAce,2021,Van,70.00,true,
+Mercedes-Benz,GLE,2023,SUV,150.00,true,
+Nissan,Frontier,2022,Truck,75.00,false,
+Hyundai,Tucson,2023,SUV,60.00,true,
+Kia,Carnival,2022,Van,85.00,true,

@@ -11,23 +11,36 @@ class UserBase(SQLModel):
     password: str
     role: str = "regular_user"
 
-
 class User(UserBase, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
 
 
+class VehicleBase(SQLModel):
+    make: str
+    model: str
+    year: int
+    category: str
+    price_per_day: float
+    available: bool = True
+    image_url: Optional[str] = None
+
+class Vehicle(VehicleBase, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+
+
 class ReservationBase(SQLModel):
-    vehicle_id: int
+    vehicle_id: int = Field(foreign_key="vehicle.id")
     date_from: datetime
     date_to: datetime
     pickup_location: str
     return_location: str
+    status: str = "active"
+    total_cost: Optional[float] = None
     insurance_id: Optional[int] = None
     extras: Optional[Dict[str, int]] = Field(default=None, sa_column=Column(JSON))
     payment_method: Optional[str] = None
     comment: Optional[str] = None
     authorized_user_id: Optional[int] = None
-
 
 class Reservation(ReservationBase, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -53,7 +66,13 @@ class DriverBase(SQLModel):
     code: Optional[str] = None
     license_photo: Optional[List[str]] = Field(default=None, sa_column=Column(JSON))
 
-
 class Driver(DriverBase, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     reservation_id: Optional[int] = Field(default=None, foreign_key="reservation.id")
+
+
+class Comment(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id")
+    content: str
+    created_at: datetime = Field(default_factory=datetime.utcnow)
