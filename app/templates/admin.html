@@ -6,7 +6,24 @@
 
 
 {% block subpage_content %}
-
-   I am the admin page
+   <div class="container-fluid" id="admin-stats">
+      <div class="row g-3 mb-4" id="admin-summary-cards"></div>
+      <div class="card shadow-sm">
+         <div class="card-body">
+            <h5 class="card-title mb-3">Fleet By Location</h5>
+            <div class="table-responsive">
+               <table class="table table-striped">
+                  <thead>
+                     <tr>
+                        <th>Location</th>
+                        <th>Vehicles</th>
+                     </tr>
+                  </thead>
+                  <tbody id="admin-location-breakdown"></tbody>
+               </table>
+            </div>
+         </div>
+      </div>
+   </div>
 
 {% endblock %}

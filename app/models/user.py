@@ -22,10 +22,30 @@ class VehicleBase(SQLModel):
     category: str
     price_per_day: float
     available: bool = True
-    image_url: Optional[str] = None
+    location: str = Field(index=True)
+    url_image: Optional[str] = None
+    exterior_image_url: Optional[str] = None
+    interior_image_url: Optional[str] = None
+    description: Optional[str] = None
+    seats: Optional[int] = None
+    transmission: Optional[str] = None
+    fuel_type: Optional[str] = None
 
 class Vehicle(VehicleBase, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
+
+
+class VehicleReviewBase(SQLModel):
+    rating: int = Field(ge=1, le=5)
+    comment: str
+    reviewer_name: str
+
+
+class VehicleReview(VehicleReviewBase, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    vehicle_id: int = Field(foreign_key="vehicle.id", index=True)
+    user_id: Optional[int] = Field(default=None, foreign_key="user.id")
+    created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
 class ReservationBase(SQLModel):

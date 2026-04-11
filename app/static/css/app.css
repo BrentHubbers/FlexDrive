@@ -1,0 +1,28 @@
+.rental-app .vehicle-card {
+	border-radius: 0.8rem;
+}
+
+#trinidad-branch-map {
+	height: 360px;
+	width: 100%;
+	border-radius: 0.75rem;
+}
+
+.rental-app .vehicle-thumb {
+	height: 190px;
+	object-fit: cover;
+}
+
+.rental-app .card-title {
+	font-size: 1.05rem;
+}
+
+.rental-app .form-control,
+.rental-app .form-select {
+	border-radius: 0.6rem;
+}
+
+#vehicle-reviews {
+	max-height: 260px;
+	overflow-y: auto;
+}
