@@ -10,12 +10,17 @@
 
     #wrapper {
         display: flex;
+        align-items: flex-start;
     }
 
     #sidebar {
         min-width: 250px;
         max-width: 250px;
         min-height: 100vh;
+        position: sticky;
+        top: 0;
+        height: 100vh;
+        overflow-y: auto;
         transition: all 0.3s;
         background: #b10a0a;
         color: #fff;
@@ -44,6 +49,7 @@
         display: flex;
         flex-direction: column;
         background-color: #010101;
+        min-width: 0;
     }
 
     .card {
@@ -69,7 +75,9 @@
 <div id="wrapper">
 
     <nav id="sidebar" class="p-3 d-flex flex-column vh-100">
-        <h4 class="text-white mb-4 text-center py-4">FlexDrive</h4>
+        <h4 class="mb-4 text-center py-4">
+            <a href="/app" class="text-white text-decoration-none">FlexDrive</a>
+        </h4>
 
         <ul class="nav nav-pills flex-column gap-2 flex-grow-1">
             <li class="nav-item">
