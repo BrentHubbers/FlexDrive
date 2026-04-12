@@ -291,6 +291,167 @@ async function loadAdminDashboard() {
         .join("");
 }
 
+function adminReservationRowTemplate(reservation) {
+    return `
+        <tr>
+            <td>${reservation.id}</td>
+            <td>${reservation.vehicle_id}</td>
+            <td>${reservation.user_id ?? "-"}</td>
+            <td><input type="date" class="form-control form-control-sm" id="admin-res-start-${reservation.id}" value="${String(reservation.date_from).slice(0, 10)}"></td>
+            <td><input type="date" class="form-control form-control-sm" id="admin-res-end-${reservation.id}" value="${String(reservation.date_to).slice(0, 10)}"></td>
+            <td>
+                <select class="form-select form-select-sm" id="admin-res-status-${reservation.id}">
+                    <option value="active" ${reservation.status === "active" ? "selected" : ""}>active</option>
+                    <option value="cancelled" ${reservation.status === "cancelled" ? "selected" : ""}>cancelled</option>
+                    <option value="completed" ${reservation.status === "completed" ? "selected" : ""}>completed</option>
+                </select>
+            </td>
+            <td class="d-flex gap-2">
+                <button class="btn btn-sm btn-primary admin-save-reservation-btn" data-reservation-id="${reservation.id}">Save</button>
+                <button class="btn btn-sm btn-outline-danger admin-cancel-reservation-btn" data-reservation-id="${reservation.id}">Cancel</button>
+            </td>
+        </tr>
+    `;
+}
+
+function adminFleetRowTemplate(vehicle) {
+    return `
+        <tr>
+            <td>${vehicle.id}</td>
+            <td>${vehicle.year} ${vehicle.make} ${vehicle.model}</td>
+            <td>${vehicle.location}</td>
+            <td>${formatMoney(vehicle.price_per_day)}</td>
+            <td>${vehicle.available ? "Yes" : "No"}</td>
+            <td>
+                <button class="btn btn-sm btn-outline-danger admin-delete-vehicle-btn" data-vehicle-id="${vehicle.id}">Remove</button>
+            </td>
+        </tr>
+    `;
+}
+
+async function loadAdminReservations() {
+    const listEl = document.querySelector("#admin-reservation-list");
+    if (!listEl) return;
+
+    const reservations = await getJson("/api/admin/reservations");
+    listEl.innerHTML = reservations.map(adminReservationRowTemplate).join("");
+}
+
+async function loadAdminFleet() {
+    const listEl = document.querySelector("#admin-fleet-list");
+    if (!listEl) return;
+
+    const fleet = await getJson("/api/admin/fleet");
+    listEl.innerHTML = fleet.map(adminFleetRowTemplate).join("");
+}
+
+async function saveAdminReservation(reservationId) {
+    const start = document.querySelector(`#admin-res-start-${reservationId}`)?.value;
+    const end = document.querySelector(`#admin-res-end-${reservationId}`)?.value;
+    const status = document.querySelector(`#admin-res-status-${reservationId}`)?.value;
+    if (!start || !end || !status) return;
+
+    await getJson(`/api/admin/reservations/${reservationId}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+            date_from: `${start}T10:00:00Z`,
+            date_to: `${end}T10:00:00Z`,
+            status,
+        }),
+    });
+
+    await Promise.all([loadAdminDashboard(), loadAdminReservations(), loadAdminFleet()]);
+}
+
+async function cancelAdminReservation(reservationId) {
+    await getJson(`/api/admin/reservations/${reservationId}/cancel`, {
+        method: "PATCH",
+    });
+
+    await Promise.all([loadAdminDashboard(), loadAdminReservations(), loadAdminFleet()]);
+}
+
+async function addAdminVehicle(event) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const data = new FormData(form);
+
+    const payload = {
+        make: String(data.get("make") || "").trim(),
+        model: String(data.get("model") || "").trim(),
+        year: Number(data.get("year") || 0),
+        category: String(data.get("category") || "").trim(),
+        price_per_day: Number(data.get("price_per_day") || 0),
+        location: String(data.get("location") || "").trim(),
+        license_plate: String(data.get("license_plate") || "").trim() || null,
+        url_image: String(data.get("url_image") || "").trim() || null,
+        seats: data.get("seats") ? Number(data.get("seats")) : null,
+        transmission: String(data.get("transmission") || "").trim() || null,
+        fuel_type: String(data.get("fuel_type") || "").trim() || null,
+    };
+
+    await getJson("/api/admin/fleet", {
+        method: "POST",
+        body: JSON.stringify(payload),
+    });
+
+    form.reset();
+    await Promise.all([loadAdminDashboard(), loadAdminFleet()]);
+}
+
+async function removeAdminVehicle(vehicleId) {
+    await getJson(`/api/admin/fleet/${vehicleId}`, {
+        method: "DELETE",
+    });
+
+    await Promise.all([loadAdminDashboard(), loadAdminFleet()]);
+}
+
+function bindAdminEvents() {
+    document.querySelector("#admin-refresh-reservations")?.addEventListener("click", () => {
+        loadAdminReservations();
+    });
+
+    document.querySelector("#admin-add-vehicle-form")?.addEventListener("submit", async (event) => {
+        try {
+            await addAdminVehicle(event);
+        } catch (err) {
+            alert(`Unable to add vehicle: ${err.message}`);
+        }
+    });
+
+    document.addEventListener("click", async (event) => {
+        const saveBtn = event.target.closest(".admin-save-reservation-btn");
+        if (saveBtn) {
+            try {
+                await saveAdminReservation(saveBtn.dataset.reservationId);
+            } catch (err) {
+                alert(`Unable to update reservation: ${err.message}`);
+            }
+            return;
+        }
+
+        const cancelBtn = event.target.closest(".admin-cancel-reservation-btn");
+        if (cancelBtn) {
+            try {
+                await cancelAdminReservation(cancelBtn.dataset.reservationId);
+            } catch (err) {
+                alert(`Unable to cancel reservation: ${err.message}`);
+            }
+            return;
+        }
+
+        const removeBtn = event.target.closest(".admin-delete-vehicle-btn");
+        if (removeBtn) {
+            try {
+                await removeAdminVehicle(removeBtn.dataset.vehicleId);
+            } catch (err) {
+                alert(`Unable to remove vehicle: ${err.message}`);
+            }
+        }
+    });
+}
+
 async function main() {
     const isRentalPage = Boolean(document.querySelector("#vehicle-list"));
     const isAdminPage = Boolean(document.querySelector("#admin-stats"));
@@ -303,7 +464,8 @@ async function main() {
     }
 
     if (isAdminPage) {
-        await loadAdminDashboard();
+        bindAdminEvents();
+        await Promise.all([loadAdminDashboard(), loadAdminReservations(), loadAdminFleet()]);
     }
 }
 

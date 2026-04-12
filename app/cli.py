@@ -1,304 +1,258 @@
-from __future__ import annotations
-import argparse
 import csv
-from pathlib import Path
+import pathlib
 import sys
-from datetime import datetime, timedelta, timezone
-from fastapi.routing import APIRoute
-from app.database import create_db_and_tables, drop_all, get_cli_session
-from app.main import app
-from app.models.user import Comment, Driver, Reservation, User, Vehicle, VehicleBase, VehicleReview, VehicleReviewBase
-from app.repositories.user import UserRepository
-from app.repositories.vehicle import VehicleRepository
-from app.repositories.reservation import ReservationRepository
-from app.repositories.driver import DriverRepository
-from app.repositories.comment import CommentRepository
-from app.repositories.vehicle_review import VehicleReviewRepository
+from datetime import date, timedelta
+
+import typer
+from sqlmodel import select
+
+from app.database import get_cli_session, create_db_and_tables
 from app.utilities.security import encrypt_password
+from app.models.user import *
 
-if __package__ is None or __package__ == "":
-	sys.path.append(str(Path(__file__).resolve().parents[1]))
+app = typer.Typer()
 
+@app.command("initialize")
+def init_db() -> None:
+	
+	trinidad_locations = [
+		"Port of Spain",
+		"San Fernando",
+		"Chaguanas",
+		"Arima",
+		"Diego Martin",
+		"Tunapuna",
+		"Couva",
+		"Point Fortin",
+	]
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-VEHICLES_CSV_PATH = PROJECT_ROOT / "vehicles.csv"
-DATABASE_FILE = PROJECT_ROOT / "database.db"
-
-TRINIDAD_LOCATION_PLAN = [
-	("Port of Spain", 4),
-	("San Fernando", 4),
-	("Chaguanas", 4),
-	("Arima", 3),
-	("Diego Martin", 3),
-	("Tunapuna", 3),
-	("Couva", 2),
-	("Point Fortin", 2),
-]
-
-ALL_MODELS = [User, Vehicle, Reservation, Driver, Comment, VehicleReview]
-
-DEFAULT_USERS = [
-	{"username": "bob", "email": "bob@mail.com", "password": "bobpass", "role": "admin"},
-	{"username": "admin", "email": "admin@trinirent.com", "password": "admin123", "role": "admin"},
-	{"username": "customer1", "email": "customer1@trinirent.com", "password": "customer123", "role": "regular_user"},
-	{"username": "customer2", "email": "customer2@trinirent.com", "password": "customer123", "role": "regular_user"},
-]
-
-
-# -------------------- CORE SETUP --------------------
-
-def ensure_database_files() -> None:
 	create_db_and_tables()
-	DATABASE_FILE.touch(exist_ok=True)
 
-
-def reset_database_schema() -> None:
-	drop_all()
-	create_db_and_tables()
-	DATABASE_FILE.touch(exist_ok=True)
-
-
-# -------------------- DEBUG HELPERS --------------------
-
-def list_models() -> None:
-	print("Loaded SQLModel tables:")
-	for model in ALL_MODELS:
-		table_name = getattr(model, "__tablename__", model.__name__.lower())
-		print(f"- {model.__name__} (table: {table_name})")
-
-
-def list_routes() -> None:
-	print("Registered backend routes:")
-	for route in app.routes:
-		if isinstance(route, APIRoute):
-			methods = ",".join(sorted(m for m in route.methods if m not in {"HEAD", "OPTIONS"}))
-			print(f"- {methods:<8} {route.path}")
-
-
-# -------------------- UTILITIES --------------------
-
-def expand_location_plan() -> list[str]:
-	locations = []
-	for location, count in TRINIDAD_LOCATION_PLAN:
-		locations.extend([location] * count)
-	return locations
-
-
-def parse_csv_bool(value: str | None, default: bool = True) -> bool:
-	if value is None:
-		return default
-	return value.strip().lower() in {"true", "1", "yes", "y"}
-
-
-def build_image_url(make: str, model: str, view: str) -> str:
-	# 🔥 Stable image (no random failures)
-	return "https://images.unsplash.com/photo-1549924231-f129b911e442?auto=format&fit=crop&w=1200&q=80"
-
-
-# -------------------- VEHICLE LOADING --------------------
-
-def load_demo_vehicle_data() -> list[VehicleBase]:
-	locations = expand_location_plan()
-
-	# 🔥 If CSV missing → generate data
-	if not VEHICLES_CSV_PATH.exists():
-		print("⚠️ vehicles.csv not found — generating demo vehicles...")
-
-		demo = []
-		for i, location in enumerate(locations):
-			make = f"Brand{i+1}"
-			model = f"Model{i+1}"
-
-			demo.append(
-				VehicleBase(
-					make=make,
-					model=model,
-					year=2020,
-					category="Sedan",
-					price_per_day=250 + (i * 10),
-					available=True,
-					location=location,
-					url_image=build_image_url(make, model, "ext"),
-					exterior_image_url=build_image_url(make, model, "ext"),
-					interior_image_url=build_image_url(make, model, "int"),
-					description=f"{make} {model} is a reliable rental option.",
-					seats=5,
-					transmission="Automatic",
-					fuel_type="Gasoline",
+	with get_cli_session() as db:
+		admin = db.exec(select(User).where(User.username == "admin")).one_or_none()
+		if not admin:
+			db.add(
+				User(
+					username="admin",
+					email="admin@flexdrive.com",
+					password=encrypt_password("adminpass"),
+					role=UserRole.admin,
 				)
 			)
+			print("Admin user created")
+		elif admin.role != UserRole.admin:
+			admin.role = UserRole.admin
+			db.add(admin)
+			print("Admin user role updated to admin")
 
-		return demo
 
-	# ✅ CSV exists → use it
-	with VEHICLES_CSV_PATH.open(newline="", encoding="utf-8-sig") as f:
-		rows = list(csv.DictReader(f))
-
-	locations_needed = min(len(locations), len(rows))
-
-	demo = []
-	for row, location in zip(rows[:locations_needed], locations):
-		make = row.get("make", "").strip()
-		model = row.get("model", "").strip()
-
-		demo.append(
-			VehicleBase(
-				make=make,
-				model=model,
-				year=int(row.get("year") or 2020),
-				category=row.get("category") or "Sedan",
-				price_per_day=float(row.get("price_per_day") or 250),
-				available=parse_csv_bool(row.get("available")),
-				location=location,
-				url_image=row.get("url_image") or build_image_url(make, model, "ext"),
-				exterior_image_url=row.get("exterior_image_url") or build_image_url(make, model, "ext"),
-				interior_image_url=row.get("interior_image_url") or build_image_url(make, model, "int"),
-				description=row.get("description") or f"{make} {model} is a great rental.",
-				seats=int(row.get("seats") or 5),
-				transmission=row.get("transmission") or "Automatic",
-				fuel_type=row.get("fuel_type") or "Gasoline",
+		bob = db.exec(select(User).where(User.username == "bob")).one_or_none()
+		if not bob:
+			db.add(
+				User(
+					username="bob",
+					email="bob@flexdrive.com",
+					password=encrypt_password("bobpass"),
+					role=UserRole.admin,
+				)
 			)
-		)
+			print("Bob user created")
+		elif bob.role != UserRole.admin:
+			bob.role = UserRole.admin
+			db.add(bob)
+			print("Bob user role updated to admin")
 
-	return demo
+		test_user = db.exec(select(User).where(User.username == "testuser")).one_or_none()
+		if not test_user:
+			db.add(
+				User(
+					username="testuser",
+					email="testuser@flexdrive.com",
+					password=encrypt_password("testpass"),
+					role=UserRole.regular_user,
+				)
+			)
+			print("Test user created")
+		elif test_user.role != UserRole.regular_user:
+			test_user.role = UserRole.regular_user
+			db.add(test_user)
+			print("Test user role updated to regular_user")
 
+		invalid_users = db.exec(
+			select(User).where((User.role != "admin") & (User.role != "regular_user"))
+		).all()
+		if invalid_users:
+			invalid_names = ", ".join(user.username for user in invalid_users)
+			raise ValueError(f"Invalid user role found for: {invalid_names}. Allowed roles: admin, regular_user")
 
-# -------------------- SEEDING --------------------
+		db.commit()
 
-def seed_users() -> int:
-	created = 0
-	with get_cli_session() as db:
-		repo = UserRepository(db)
-		for u in DEFAULT_USERS:
-			if repo.get_by_username(u["username"]):
-				continue
-			repo.create(User(
-				username=u["username"],
-				email=u["email"],
-				password=encrypt_password(u["password"]),
-				role=u["role"]
-			))
-			created += 1
-	return created
+		# Sync vehicles from CSV every run (create new rows and update existing rows)
+		rows: list[dict[str, str]] = []
+		vehicles_csv_path = pathlib.Path("vehicles.csv")
+		if not vehicles_csv_path.exists():
+			vehicles_csv_path = pathlib.Path(__file__).resolve().parents[1] / "vehicles.csv"
 
+		if vehicles_csv_path.exists():
+			with open(vehicles_csv_path, "r", newline="", encoding="utf-8-sig") as file:
+				reader = csv.DictReader(file)
+				raw_rows = list(reader)
 
-def seed_vehicles():
-	with get_cli_session() as db:
-		repo = VehicleRepository(db)
+			if raw_rows:
+				# Handle malformed first header like ",model,..." where make ends up unnamed.
+				first_keys = [k for k in raw_rows[0].keys() if k is not None]
+				first_key = first_keys[0] if first_keys else ""
 
-		if repo.count() > 0:
-			return 0, repo.count_by_location()
+				for row in raw_rows:
+					cleaned = {
+						str(k).strip(): ("" if v is None else str(v).strip())
+						for k, v in row.items()
+						if k is not None
+					}
+					make = cleaned.get("make", "")
+					if not make and first_key in cleaned:
+						make = cleaned.get(first_key, "")
 
-		data = load_demo_vehicle_data()
-		repo.create_many(data)
-		return len(data), repo.count_by_location()
+					rows.append(
+						{
+							"make": make,
+							"model": cleaned.get("model", ""),
+							"year": cleaned.get("year", ""),
+							"category": cleaned.get("category", ""),
+							"price_per_day": cleaned.get("price_per_day", ""),
+							"available": cleaned.get("available", ""),
+							"url_image": cleaned.get("url_image", ""),
+							"exterior_image_url": cleaned.get("exterior_image_url", ""),
+							"interior_image_url": cleaned.get("interior_image_url", ""),
+							"description": cleaned.get("description", ""),
+							"seats": cleaned.get("seats", ""),
+							"transmission": cleaned.get("transmission", ""),
+							"fuel_type": cleaned.get("fuel_type", ""),
+						}
+					)
 
+		if not rows:
+			print(f"{vehicles_csv_path} is missing or empty; no vehicles imported")
+		else:
+			vehicles_created = 0
+			vehicles_updated = 0
+			for index, row in enumerate(rows):
+				make = (row.get("make") or "").strip() or "Unknown"
+				model = (row.get("model") or "").strip() or "Model"
+				category = (row.get("category") or "").strip() or "Sedan"
+				url_image = (row.get("url_image") or "").strip() or "https://via.placeholder.com/1200x800"
+				exterior_image_url = (row.get("exterior_image_url") or "").strip() or url_image
+				interior_image_url = (row.get("interior_image_url") or "").strip() or exterior_image_url
+				description = (row.get("description") or "").strip() or f"{make} {model} rental vehicle"
+				transmission = (row.get("transmission") or "").strip() or "Automatic"
+				fuel_type = (row.get("fuel_type") or "").strip() or "Petrol"
 
-def seed_rental_activity():
-	with get_cli_session() as db:
-		res_repo = ReservationRepository(db)
-		driver_repo = DriverRepository(db)
-		comment_repo = CommentRepository(db)
-		review_repo = VehicleReviewRepository(db)
-		user_repo = UserRepository(db)
-		vehicle_repo = VehicleRepository(db)
+				year_raw = (row.get("year") or "").strip()
+				try:
+					year = int(float(year_raw)) if year_raw else 2022
+				except ValueError:
+					year = 2022
 
-		if res_repo.count() > 0:
-			return res_repo.count(), driver_repo.count(), comment_repo.count(), review_repo.count()
+				price_raw = (row.get("price_per_day") or "").strip()
+				try:
+					price_per_day = float(price_raw) if price_raw else 300.0
+				except ValueError:
+					price_per_day = 300.0
 
-		users = user_repo.get_all_users()
-		vehicles = vehicle_repo.get_all_vehicles()
+				seats_raw = (row.get("seats") or "").strip()
+				try:
+					seats = int(float(seats_raw)) if seats_raw else 5
+				except ValueError:
+					seats = 5
 
-		if not users or not vehicles:
-			return 0, 0, 0, 0
+				available_raw = (row.get("available") or "").strip().lower()
+				available = True if not available_raw else available_raw in {"1", "true", "yes", "y", "on"}
 
-		reservations = []
-		for i, v in enumerate(vehicles[:8]):
-			u = users[i % len(users)]
-			start = datetime.now(timezone.utc) + timedelta(days=i + 1)
-			end = start + timedelta(days=2)
+				license_plate = f"TRI-{index + 1:04d}"
+				existing = db.exec(select(Vehicle).where(Vehicle.license_plate == license_plate)).one_or_none()
 
-			reservations.append(Reservation(
-				vehicle_id=v.id,
-				user_id=u.id,
-				date_from=start,
-				date_to=end,
-				pickup_location=v.location,
-				return_location=v.location,
-				status="active",
-				total_cost=v.price_per_day * 2,
-				payment_method="card"
-			))
+				if existing:
+					existing.make = make
+					existing.model = model
+					existing.year = year
+					existing.category = category
+					existing.price_per_day = price_per_day
+					existing.available = available
+					existing.location = trinidad_locations[index % len(trinidad_locations)]
+					existing.url_image = url_image
+					existing.exterior_image_url = exterior_image_url
+					existing.interior_image_url = interior_image_url
+					existing.description = description
+					existing.seats = seats
+					existing.transmission = transmission
+					existing.fuel_type = fuel_type
+					db.add(existing)
+					vehicles_updated += 1
+				else:
+					db.add(
+						Vehicle(
+							make=make,
+							model=model,
+							year=year,
+							color="Unspecified",
+							license_plate=license_plate,
+							category=category,
+							price_per_day=price_per_day,
+							available=available,
+							location=trinidad_locations[index % len(trinidad_locations)],
+							url_image=url_image,
+							exterior_image_url=exterior_image_url,
+							interior_image_url=interior_image_url,
+							description=description,
+							seats=seats,
+							transmission=transmission,
+							fuel_type=fuel_type,
+						)
+					)
+					vehicles_created += 1
 
-		created_res = res_repo.create_many(reservations)
-
-		drivers = []
-		for i, r in enumerate(created_res):
-			drivers.append(Driver(
-				first_name=f"Driver{i+1}",
-				phone=f"868555{i+100}",
-				reservation_id=r.id
-			))
-
-		comments = [
-			Comment(user_id=u.id, content=f"Feedback from {u.username}")
-			for u in users
-		]
-
-		driver_repo.create_many(drivers)
-		comment_repo.create_many(comments)
-
-		for i, v in enumerate(vehicles[:10]):
-			u = users[i % len(users)]
-			review_repo.create(
-				vehicle_id=v.id,
-				review_data=VehicleReviewBase(
-					rating=5,
-					comment=f"Great car: {v.make} {v.model}",
-					reviewer_name=u.username
-				),
-				user_id=u.id
+			db.commit()
+			print(
+				f"Vehicle sync complete: {vehicles_created} created, {vehicles_updated} updated from {vehicles_csv_path.name}"
 			)
 
-		return len(created_res), len(drivers), len(comments), 10
+	print("Database Initialized")
 
 
-# -------------------- MAIN --------------------
+@app.command("clear-reservations")
+def clear_reservations() -> None:
+	"""Delete all reservations and linked drivers, and reset fleet availability."""
+	confirm = typer.confirm("This will DELETE all reservations and linked drivers. Continue?")
+	if not confirm:
+		print("Cancelled.")
+		return
 
-def initialize_database():
-	reset_database_schema()
+	with get_cli_session() as db:
+		for driver in db.exec(select(Driver)).all():
+			db.delete(driver)
 
-	u = seed_users()
-	v, counts = seed_vehicles()
-	r, d, c, rev = seed_rental_activity()
+		for reservation in db.exec(select(Reservation)).all():
+			db.delete(reservation)
 
-	print(f"DB ready: {DATABASE_FILE}")
-	print(f"Users: {u}, Vehicles: {v}, Reservations: {r}, Drivers: {d}, Comments: {c}, Reviews: {rev}")
+		for vehicle in db.exec(select(Vehicle)).all():
+			vehicle.available = True
+			db.add(vehicle)
 
-	if counts:
-		print("Vehicles by location:")
-		for loc, count in counts.items():
-			print(f"- {loc}: {count}")
+		db.commit()
+
+	print("All reservations removed, drivers removed, and vehicle availability reset.")
 
 
-def main():
-	parser = argparse.ArgumentParser()
-	sub = parser.add_subparsers(dest="cmd", required=True)
+@app.command("drop-db")
+def drop_db() -> None:
+	"""Drop all tables (destructive)."""
+	confirm = typer.confirm("This will DELETE all data. Continue?")
+	if confirm:
+		from app.database import drop_all
 
-	sub.add_parser("initialize")
-	sub.add_parser("list-models")
-	sub.add_parser("list-routes")
-
-	args = parser.parse_args()
-
-	if args.cmd == "initialize":
-		initialize_database()
-	elif args.cmd == "list-models":
-		ensure_database_files()
-		list_models()
-	elif args.cmd == "list-routes":
-		list_routes()
+		drop_all()
+		print("All tables dropped.")
 
 
 if __name__ == "__main__":
-	main()
+	app()

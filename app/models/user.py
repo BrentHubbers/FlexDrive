@@ -1,15 +1,21 @@
 from datetime import datetime, date
+from enum import Enum
 from typing import Optional, List, Dict
 from pydantic import EmailStr
 from sqlmodel import Field, SQLModel
 from sqlalchemy import Column, JSON
 
 
+class UserRole(str, Enum):
+    admin = "admin"
+    regular_user = "regular_user"
+
+
 class UserBase(SQLModel):
     username: str = Field(index=True, unique=True)
     email: EmailStr = Field(index=True, unique=True)
     password: str
-    role: str = "regular_user"
+    role: UserRole = UserRole.regular_user
 
 class User(UserBase, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -19,17 +25,19 @@ class VehicleBase(SQLModel):
     make: str
     model: str
     year: int
+    color: str
+    license_plate: str = Field(index=True, unique=True)
     category: str
     price_per_day: float
     available: bool = True
     location: str = Field(index=True)
-    url_image: Optional[str] = None
-    exterior_image_url: Optional[str] = None
-    interior_image_url: Optional[str] = None
-    description: Optional[str] = None
-    seats: Optional[int] = None
-    transmission: Optional[str] = None
-    fuel_type: Optional[str] = None
+    url_image: str
+    exterior_image_url: str
+    interior_image_url: str
+    description: str
+    seats: int
+    transmission: str
+    fuel_type: str
 
 class Vehicle(VehicleBase, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -50,8 +58,8 @@ class VehicleReview(VehicleReviewBase, table=True):
 
 class ReservationBase(SQLModel):
     vehicle_id: int = Field(foreign_key="vehicle.id")
-    date_from: datetime
-    date_to: datetime
+    start_date: date
+    end_date: date
     pickup_location: str
     return_location: str
     status: str = "active"

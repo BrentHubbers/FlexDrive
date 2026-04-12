@@ -1,6 +1,5 @@
-from datetime import timezone
-
 from fastapi import HTTPException, Request
+from sqlmodel import select
 from app.dependencies import SessionDep, AuthDep, AdminDep
 from . import api_router
 from app.repositories.user import UserRepository
@@ -16,8 +15,24 @@ from app.schemas import (
     VehicleReviewCreate,
     VehicleReviewResponse,
     VehicleDetailResponse,
+    AdminReservationUpdate,
+    AdminVehicleCreate,
 )
-from app.models.user import Reservation, VehicleReviewBase
+from app.models.user import Reservation, VehicleReviewBase, Vehicle
+
+
+def _to_reservation_response(reservation: Reservation) -> ReservationResponse:
+    return ReservationResponse(
+        id=reservation.id,
+        vehicle_id=reservation.vehicle_id,
+        user_id=reservation.user_id,
+        date_from=reservation.start_date,
+        date_to=reservation.end_date,
+        pickup_location=reservation.pickup_location,
+        return_location=reservation.return_location,
+        status=reservation.status,
+        total_cost=reservation.total_cost,
+    )
 
 
 # API endpoint for listing users
@@ -100,7 +115,8 @@ async def list_vehicle_locations(db: SessionDep):
 @api_router.get("/my-reservations", response_model=list[ReservationResponse])
 async def my_reservations(db: SessionDep, user: AuthDep):
     reservation_repo = ReservationRepository(db)
-    return reservation_repo.get_by_user_id(user.id)
+    reservations = reservation_repo.get_by_user_id(user.id)
+    return [_to_reservation_response(reservation) for reservation in reservations]
 
 
 @api_router.post("/reservations", response_model=ReservationResponse)
@@ -116,10 +132,6 @@ async def create_reservation(payload: ReservationCreate, db: SessionDep, user: A
 
     start_dt = payload.date_from
     end_dt = payload.date_to
-    if start_dt.tzinfo is None:
-        start_dt = start_dt.replace(tzinfo=timezone.utc)
-    if end_dt.tzinfo is None:
-        end_dt = end_dt.replace(tzinfo=timezone.utc)
 
     if end_dt <= start_dt:
         raise HTTPException(status_code=400, detail="date_to must be after date_from")
@@ -130,8 +142,8 @@ async def create_reservation(payload: ReservationCreate, db: SessionDep, user: A
     reservation = Reservation(
         vehicle_id=vehicle.id,
         user_id=user.id,
-        date_from=start_dt,
-        date_to=end_dt,
+        start_date=start_dt.date(),
+        end_date=end_dt.date(),
         pickup_location=payload.pickup_location or vehicle.location,
         return_location=payload.return_location or vehicle.location,
         status="active",
@@ -142,7 +154,132 @@ async def create_reservation(payload: ReservationCreate, db: SessionDep, user: A
 
     created = reservation_repo.create_many([reservation])[0]
     vehicle_repo.set_availability(vehicle.id, False)
-    return created
+    return _to_reservation_response(created)
+
+
+@api_router.patch("/admin/reservations/{reservation_id}/cancel", response_model=ReservationResponse)
+async def cancel_reservation_as_admin(reservation_id: int, db: SessionDep, _: AdminDep):
+    reservation_repo = ReservationRepository(db)
+    vehicle_repo = VehicleRepository(db)
+
+    reservation = reservation_repo.get_by_id(reservation_id)
+    if not reservation:
+        raise HTTPException(status_code=404, detail="Reservation not found")
+
+    if reservation.status == "cancelled":
+        return _to_reservation_response(reservation)
+
+    reservation.status = "cancelled"
+    updated = reservation_repo.update(reservation)
+    vehicle_repo.set_availability(updated.vehicle_id, True)
+    return _to_reservation_response(updated)
+
+
+@api_router.get("/admin/reservations", response_model=list[ReservationResponse])
+async def list_all_reservations_as_admin(db: SessionDep, _: AdminDep):
+    reservation_repo = ReservationRepository(db)
+    reservations = reservation_repo.get_all()
+    return [_to_reservation_response(reservation) for reservation in reservations]
+
+
+@api_router.patch("/admin/reservations/{reservation_id}", response_model=ReservationResponse)
+async def edit_reservation_as_admin(
+    reservation_id: int,
+    payload: AdminReservationUpdate,
+    db: SessionDep,
+    _: AdminDep,
+):
+    reservation_repo = ReservationRepository(db)
+    vehicle_repo = VehicleRepository(db)
+
+    reservation = reservation_repo.get_by_id(reservation_id)
+    if not reservation:
+        raise HTTPException(status_code=404, detail="Reservation not found")
+
+    if payload.date_from is not None:
+        reservation.start_date = payload.date_from.date()
+    if payload.date_to is not None:
+        reservation.end_date = payload.date_to.date()
+    if reservation.end_date <= reservation.start_date:
+        raise HTTPException(status_code=400, detail="date_to must be after date_from")
+
+    if payload.pickup_location is not None:
+        reservation.pickup_location = payload.pickup_location
+    if payload.return_location is not None:
+        reservation.return_location = payload.return_location
+
+    if payload.status is not None:
+        normalized_status = payload.status.strip().lower()
+        if normalized_status not in {"active", "cancelled", "completed"}:
+            raise HTTPException(status_code=400, detail="status must be active, cancelled, or completed")
+        reservation.status = normalized_status
+
+    updated = reservation_repo.update(reservation)
+
+    if updated.status == "cancelled":
+        vehicle_repo.set_availability(updated.vehicle_id, True)
+    elif updated.status == "active":
+        vehicle_repo.set_availability(updated.vehicle_id, False)
+
+    return _to_reservation_response(updated)
+
+
+@api_router.get("/admin/fleet", response_model=list[VehicleResponse])
+async def list_fleet_as_admin(db: SessionDep, _: AdminDep):
+    vehicle_repo = VehicleRepository(db)
+    vehicles = vehicle_repo.get_all_vehicles()
+    return [VehicleResponse(**vehicle.model_dump()) for vehicle in vehicles]
+
+
+@api_router.post("/admin/fleet", response_model=VehicleResponse)
+async def add_fleet_vehicle_as_admin(payload: AdminVehicleCreate, db: SessionDep, _: AdminDep):
+    vehicle_repo = VehicleRepository(db)
+
+    normalized_make = payload.make.strip()
+    normalized_model = payload.model.strip()
+    if not normalized_make or not normalized_model:
+        raise HTTPException(status_code=400, detail="make and model are required")
+
+    created = vehicle_repo.create(
+        Vehicle(
+            make=normalized_make,
+            model=normalized_model,
+            year=payload.year,
+            color=(payload.color or "Unspecified").strip() or "Unspecified",
+            license_plate=(payload.license_plate or f"ADM-{payload.year}-{normalized_make[:2].upper()}{normalized_model[:2].upper()}").strip(),
+            category=payload.category.strip() or "Sedan",
+            price_per_day=float(payload.price_per_day),
+            available=bool(payload.available),
+            location=payload.location.strip(),
+            url_image=(payload.url_image or "https://via.placeholder.com/1200x800").strip(),
+            exterior_image_url=(payload.exterior_image_url or payload.url_image or "https://via.placeholder.com/1200x800").strip(),
+            interior_image_url=(payload.interior_image_url or payload.exterior_image_url or payload.url_image or "https://via.placeholder.com/1200x800").strip(),
+            description=(payload.description or f"{normalized_make} {normalized_model} rental vehicle").strip(),
+            seats=int(payload.seats or 5),
+            transmission=(payload.transmission or "Automatic").strip(),
+            fuel_type=(payload.fuel_type or "Petrol").strip(),
+        )
+    )
+    return VehicleResponse(**created.model_dump())
+
+
+@api_router.delete("/admin/fleet/{vehicle_id}")
+async def remove_fleet_vehicle_as_admin(vehicle_id: int, db: SessionDep, _: AdminDep):
+    vehicle = db.get(Vehicle, vehicle_id)
+    if not vehicle:
+        raise HTTPException(status_code=404, detail="Vehicle not found")
+
+    active_reservation = db.exec(
+        select(Reservation).where(
+            (Reservation.vehicle_id == vehicle_id) & (Reservation.status == "active")
+        )
+    ).first()
+    if active_reservation:
+        raise HTTPException(status_code=400, detail="Cannot remove a vehicle with active reservations")
+
+    db.delete(vehicle)
+    db.commit()
+    return {"message": "Vehicle removed"}
 
 
 @api_router.get("/admin/summary", response_model=AdminSummary)

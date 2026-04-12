@@ -24,6 +24,69 @@
             </div>
          </div>
       </div>
+
+      <div class="card shadow-sm mt-4">
+         <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+               <h5 class="card-title mb-0">Reservations</h5>
+               <button class="btn btn-outline-secondary btn-sm" id="admin-refresh-reservations">Refresh</button>
+            </div>
+            <div class="table-responsive">
+               <table class="table table-striped align-middle">
+                  <thead>
+                     <tr>
+                        <th>ID</th>
+                        <th>Vehicle</th>
+                        <th>User</th>
+                        <th>Start</th>
+                        <th>End</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                     </tr>
+                  </thead>
+                  <tbody id="admin-reservation-list"></tbody>
+               </table>
+            </div>
+         </div>
+      </div>
+
+      <div class="card shadow-sm mt-4">
+         <div class="card-body">
+            <h5 class="card-title mb-3">Fleet Management</h5>
+            <form id="admin-add-vehicle-form" class="row g-2 mb-4">
+               <div class="col-md-2"><input class="form-control" name="make" placeholder="Make" required /></div>
+               <div class="col-md-2"><input class="form-control" name="model" placeholder="Model" required /></div>
+               <div class="col-md-2"><input class="form-control" name="year" type="number" placeholder="Year" required /></div>
+               <div class="col-md-2"><input class="form-control" name="category" placeholder="Category" required /></div>
+               <div class="col-md-2"><input class="form-control" name="price_per_day" type="number" step="0.01" placeholder="Price/Day" required /></div>
+               <div class="col-md-2"><input class="form-control" name="location" placeholder="Location" required /></div>
+               <div class="col-md-3"><input class="form-control" name="license_plate" placeholder="License Plate (optional)" /></div>
+               <div class="col-md-3"><input class="form-control" name="url_image" placeholder="Image URL (optional)" /></div>
+               <div class="col-md-2"><input class="form-control" name="seats" type="number" placeholder="Seats" /></div>
+               <div class="col-md-2"><input class="form-control" name="transmission" placeholder="Transmission" /></div>
+               <div class="col-md-2"><input class="form-control" name="fuel_type" placeholder="Fuel Type" /></div>
+               <div class="col-md-12 d-grid d-md-flex justify-content-md-end">
+                  <button class="btn btn-primary" type="submit">Add Vehicle</button>
+               </div>
+            </form>
+
+            <div class="table-responsive">
+               <table class="table table-striped align-middle">
+                  <thead>
+                     <tr>
+                        <th>ID</th>
+                        <th>Vehicle</th>
+                        <th>Location</th>
+                        <th>Price/Day</th>
+                        <th>Available</th>
+                        <th>Actions</th>
+                     </tr>
+                  </thead>
+                  <tbody id="admin-fleet-list"></tbody>
+               </table>
+            </div>
+         </div>
+      </div>
    </div>
 
 {% endblock %}

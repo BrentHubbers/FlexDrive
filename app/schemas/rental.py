@@ -67,3 +67,30 @@ class VehicleReviewResponse(SQLModel):
 
 class VehicleDetailResponse(VehicleResponse):
     reviews: list[VehicleReviewResponse]
+
+
+class AdminReservationUpdate(SQLModel):
+    date_from: datetime | None = None
+    date_to: datetime | None = None
+    pickup_location: str | None = None
+    return_location: str | None = None
+    status: str | None = None
+
+
+class AdminVehicleCreate(SQLModel):
+    make: str
+    model: str
+    year: int
+    category: str
+    price_per_day: float
+    location: str
+    color: str | None = None
+    license_plate: str | None = None
+    url_image: str | None = None
+    exterior_image_url: str | None = None
+    interior_image_url: str | None = None
+    description: str | None = None
+    seats: int | None = None
+    transmission: str | None = None
+    fuel_type: str | None = None
+    available: bool = True

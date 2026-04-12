@@ -48,6 +48,20 @@ class ReservationRepository:
         statement = select(Reservation).where(Reservation.user_id == user_id)
         return self.db.exec(statement).all()
 
+    def get_by_id(self, reservation_id: int) -> Optional[Reservation]:
+        return self.db.get(Reservation, reservation_id)
+
+    def update(self, reservation: Reservation) -> Reservation:
+        try:
+            self.db.add(reservation)
+            self.db.commit()
+            self.db.refresh(reservation)
+            return reservation
+        except Exception as exc:
+            logger.error(f"An error occurred while updating reservation: {exc}")
+            self.db.rollback()
+            raise
+
     def count(self) -> int:
         statement = select(func.count()).select_from(Reservation)
         return int(self.db.exec(statement).one())
