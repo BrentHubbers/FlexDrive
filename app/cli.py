@@ -118,6 +118,7 @@ def init_db() -> None:
 							"make": make,
 							"model": cleaned.get("model", ""),
 							"year": cleaned.get("year", ""),
+							"license_plate": cleaned.get("license_plate", ""),
 							"category": cleaned.get("category", ""),
 							"price_per_day": cleaned.get("price_per_day", ""),
 							"available": cleaned.get("available", ""),
@@ -155,9 +156,9 @@ def init_db() -> None:
 
 				price_raw = (row.get("price_per_day") or "").strip()
 				try:
-					price_per_day = float(price_raw) if price_raw else 300.0
+					price_per_day = float(price_raw) if price_raw else 200.0
 				except ValueError:
-					price_per_day = 300.0
+					price_per_day = 200.0
 
 				seats_raw = (row.get("seats") or "").strip()
 				try:
@@ -168,7 +169,7 @@ def init_db() -> None:
 				available_raw = (row.get("available") or "").strip().lower()
 				available = True if not available_raw else available_raw in {"1", "true", "yes", "y", "on"}
 
-				license_plate = f"TRI-{index + 1:04d}"
+				license_plate = (row.get("license_plate") or "").strip() or f"PBD-{index + 4:04d}"
 				existing = db.exec(select(Vehicle).where(Vehicle.license_plate == license_plate)).one_or_none()
 
 				if existing:
@@ -194,7 +195,6 @@ def init_db() -> None:
 							make=make,
 							model=model,
 							year=year,
-							color="Unspecified",
 							license_plate=license_plate,
 							category=category,
 							price_per_day=price_per_day,

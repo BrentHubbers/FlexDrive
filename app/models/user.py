@@ -25,7 +25,6 @@ class VehicleBase(SQLModel):
     make: str
     model: str
     year: int
-    color: str
     license_plate: str = Field(index=True, unique=True)
     category: str
     price_per_day: float

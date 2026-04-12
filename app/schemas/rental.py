@@ -7,6 +7,7 @@ class VehicleResponse(SQLModel):
     make: str
     model: str
     year: int
+    license_plate: str
     category: str
     price_per_day: float
     available: bool

@@ -1,5 +1,48 @@
 {% extends "authenticated-base.html" %}
 
+{% block additional_styles %}
+<style>
+   .admin-sort-btn {
+      border: 0;
+      background: transparent;
+      padding: 0;
+      margin: 0;
+      color: inherit;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      cursor: pointer;
+      text-decoration: none;
+   }
+
+   .admin-sort-btn:hover {
+      color: #212529;
+      opacity: 0.85;
+   }
+
+   .admin-sort-btn:focus,
+   .admin-sort-btn:focus-visible {
+      outline: none;
+      box-shadow: none;
+   }
+
+   .admin-sort-indicator {
+      min-width: 0.8rem;
+      display: inline-block;
+      text-align: center;
+      color: #6c757d;
+      font-size: 0.85rem;
+      line-height: 1;
+   }
+
+   .admin-sort-btn.is-active .admin-sort-indicator {
+      color: #212529;
+      font-weight: 700;
+   }
+</style>
+{% endblock %}
+
 {% block external_js %}
 <script src="{{ url_for('static', path='js/app.js')}}"></script>
 {% endblock %}
@@ -37,6 +80,7 @@
                      <tr>
                         <th>ID</th>
                         <th>Vehicle</th>
+                        <th>Plate</th>
                         <th>User</th>
                         <th>Start</th>
                         <th>End</th>
@@ -74,11 +118,13 @@
                <table class="table table-striped align-middle">
                   <thead>
                      <tr>
-                        <th>ID</th>
-                        <th>Vehicle</th>
-                        <th>Location</th>
-                        <th>Price/Day</th>
-                        <th>Available</th>
+                        <th><button type="button" class="admin-sort-btn admin-fleet-sort" data-sort-key="id">ID <span class="admin-sort-indicator" aria-hidden="true">↕</span></button></th>
+                        <th><button type="button" class="admin-sort-btn admin-fleet-sort" data-sort-key="vehicle">Vehicle <span class="admin-sort-indicator" aria-hidden="true">↕</span></button></th>
+                        <th><button type="button" class="admin-sort-btn admin-fleet-sort" data-sort-key="license_plate">Plate <span class="admin-sort-indicator" aria-hidden="true">↕</span></button></th>
+                        <th><button type="button" class="admin-sort-btn admin-fleet-sort" data-sort-key="category">Category <span class="admin-sort-indicator" aria-hidden="true">↕</span></button></th>
+                        <th><button type="button" class="admin-sort-btn admin-fleet-sort" data-sort-key="location">Location <span class="admin-sort-indicator" aria-hidden="true">↕</span></button></th>
+                        <th><button type="button" class="admin-sort-btn admin-fleet-sort" data-sort-key="price_per_day">Price/Day <span class="admin-sort-indicator" aria-hidden="true">↕</span></button></th>
+                        <th><button type="button" class="admin-sort-btn admin-fleet-sort" data-sort-key="available">Available <span class="admin-sort-indicator" aria-hidden="true">↕</span></button></th>
                         <th>Actions</th>
                      </tr>
                   </thead>

@@ -13,15 +13,39 @@
 <div class="container-fluid rental-app" id="content">
 
     <!-- FILTERS -->
-    <div class="row g-3 mb-3">
-        <div class="col-lg-4">
-            <label class="form-label">Filter by location</label>
-            <select class="form-select" id="location-filter">
-                <option value="">All locations</option>
-            </select>
-        </div>
-        <div class="col-lg-4 d-flex align-items-end">
-            <button class="btn btn-primary" id="refresh-vehicles">Refresh Vehicles</button>
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-12">
+                    <label class="form-label">Search vehicles</label>
+                    <input class="form-control" id="vehicle-search" placeholder="Search by make, model, year, category">
+                </div>
+            </div>
+
+            <div class="row g-3 mt-1 align-items-end">
+                <div class="col-12 col-lg-4">
+                    <label class="form-label">Category</label>
+                    <select class="form-select" id="category-filter">
+                        <option value="">All categories</option>
+                    </select>
+                </div>
+                <div class="col-12 col-lg-4">
+                    <label class="form-label">Sort by</label>
+                    <select class="form-select" id="vehicle-sort">
+                        <option value="name-asc">Name (A-Z)</option>
+                        <option value="price-asc">Price (Low to High)</option>
+                        <option value="price-desc">Price (High to Low)</option>
+                        <option value="year-desc">Year (Newest)</option>
+                        <option value="year-asc">Year (Oldest)</option>
+                    </select>
+                </div>
+                <div class="col-12 col-lg-4">
+                    <label class="form-label">Location</label>
+                    <select class="form-select" id="location-filter">
+                        <option value="">All locations</option>
+                    </select>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -34,7 +58,7 @@
                     <thead>
                         <tr>
                             <th>ID</th>
-                            <th>Vehicle ID</th>
+                            <th>Vehicle</th>
                             <th>Pickup</th>
                             <th>Return</th>
                             <th>Status</th>

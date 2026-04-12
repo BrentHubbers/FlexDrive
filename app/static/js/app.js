@@ -37,6 +37,29 @@ function formatDateInput(date) {
     return `${yyyy}-${mm}-${dd}`;
 }
 
+const rentalState = {
+    allVehicles: [],
+    vehicleById: new Map(),
+};
+
+const adminState = {
+    fleet: [],
+    fleetById: new Map(),
+    sortKey: "vehicle",
+    sortDirection: "asc",
+};
+
+function vehicleDisplayName(vehicle) {
+    if (!vehicle) return "Unknown Vehicle";
+    return `${vehicle.make} ${vehicle.model} (${vehicle.year})`;
+}
+
+function toComparable(value) {
+    if (typeof value === "boolean") return value ? 1 : 0;
+    if (typeof value === "number") return value;
+    return String(value || "").toLowerCase();
+}
+
 async function loadLocations() {
     const select = document.querySelector("#location-filter");
     if (!select) return;
@@ -47,6 +70,22 @@ async function loadLocations() {
         opt.value = location;
         opt.textContent = location;
         select.appendChild(opt);
+    }
+}
+
+function loadCategories() {
+    const select = document.querySelector("#category-filter");
+    if (!select) return;
+
+    const categories = [...new Set(rentalState.allVehicles.map((vehicle) => (vehicle.category || "").trim()).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b));
+
+    select.innerHTML = '<option value="">All categories</option>';
+    for (const category of categories) {
+        const option = document.createElement("option");
+        option.value = category;
+        option.textContent = category;
+        select.appendChild(option);
     }
 }
 
@@ -97,7 +136,7 @@ function vehicleCardTemplate(vehicle) {
             <div class="card h-100 vehicle-card shadow-sm">
                 <img src="${vehicle.url_image || vehicle.exterior_image_url || ""}" class="card-img-top vehicle-thumb" alt="${vehicle.make} ${vehicle.model}">
                 <div class="card-body d-flex flex-column">
-                    <h5 class="card-title mb-1">${vehicle.year} ${vehicle.make} ${vehicle.model}</h5>
+                    <h5 class="card-title mb-1">${vehicleDisplayName(vehicle)}</h5>
                     <p class="text-muted mb-2">${vehicle.category} - ${vehicle.location}</p>
                     <p class="fw-semibold mb-3">${formatMoney(vehicle.price_per_day)} / day</p>
                     <div class="mt-auto">
@@ -122,23 +161,89 @@ function vehicleCardTemplate(vehicle) {
     `;
 }
 
-async function loadVehicles() {
+function matchesPriceFilter(vehicle, priceFilter) {
+    const price = Number(vehicle.price_per_day || 0);
+    if (!priceFilter) return true;
+    if (priceFilter === "lte-400") return price <= 400;
+    if (priceFilter === "401-600") return price >= 401 && price <= 600;
+    if (priceFilter === "gte-601") return price >= 601;
+    return true;
+}
+
+function sortVehicles(vehicles, sortBy) {
+    const sorted = [...vehicles];
+    sorted.sort((a, b) => {
+        if (sortBy === "price-asc") return Number(a.price_per_day || 0) - Number(b.price_per_day || 0);
+        if (sortBy === "price-desc") return Number(b.price_per_day || 0) - Number(a.price_per_day || 0);
+        if (sortBy === "year-desc") return Number(b.year || 0) - Number(a.year || 0);
+        if (sortBy === "year-asc") return Number(a.year || 0) - Number(b.year || 0);
+        return vehicleDisplayName(a).localeCompare(vehicleDisplayName(b));
+    });
+    return sorted;
+}
+
+function renderVehicles(vehicles) {
     const listEl = document.querySelector("#vehicle-list");
     if (!listEl) return;
 
-    const location = document.querySelector("#location-filter")?.value || "";
-    const query = new URLSearchParams({ available_only: "true" });
-    if (location) query.set("location", location);
-
-    const vehicles = await getJson(`/api/vehicles?${query.toString()}`);
     listEl.innerHTML = vehicles.map(vehicleCardTemplate).join("");
 }
 
+function applyRentalVehicleFilters() {
+    const location = document.querySelector("#location-filter")?.value || "";
+    const category = document.querySelector("#category-filter")?.value || "";
+    const search = (document.querySelector("#vehicle-search")?.value || "").trim().toLowerCase();
+    const priceFilter = document.querySelector("#price-filter")?.value || "";
+    const sortBy = document.querySelector("#vehicle-sort")?.value || "name-asc";
+
+    const filtered = rentalState.allVehicles.filter((vehicle) => {
+        if (location && vehicle.location !== location) return false;
+        if (category && vehicle.category !== category) return false;
+        if (!matchesPriceFilter(vehicle, priceFilter)) return false;
+
+        if (search) {
+            const haystack = [
+                vehicle.make,
+                vehicle.model,
+                vehicle.category,
+                vehicle.location,
+                vehicle.license_plate || "",
+                String(vehicle.year || ""),
+            ]
+                .join(" ")
+                .toLowerCase();
+            if (!haystack.includes(search)) return false;
+        }
+
+        return true;
+    });
+
+    const sorted = sortVehicles(filtered, sortBy);
+    renderVehicles(sorted);
+}
+
+async function loadVehicles() {
+    const vehicles = await getJson("/api/vehicles?available_only=true");
+    rentalState.allVehicles = vehicles;
+    rentalState.vehicleById = new Map(vehicles.map((vehicle) => [vehicle.id, vehicle]));
+
+    loadCategories();
+    applyRentalVehicleFilters();
+}
+
+async function ensureVehicleLookup() {
+    if (rentalState.vehicleById.size > 0) return;
+
+    const vehicles = await getJson("/api/vehicles?available_only=false");
+    rentalState.vehicleById = new Map(vehicles.map((vehicle) => [vehicle.id, vehicle]));
+}
+
 function reservationRowTemplate(reservation) {
+    const vehicle = rentalState.vehicleById.get(reservation.vehicle_id);
     return `
         <tr>
             <td>${reservation.id}</td>
-            <td>${reservation.vehicle_id}</td>
+            <td>${vehicleDisplayName(vehicle)}</td>
             <td>${new Date(reservation.date_from).toLocaleString()}</td>
             <td>${new Date(reservation.date_to).toLocaleString()}</td>
             <td>${reservation.status}</td>
@@ -151,6 +256,7 @@ async function loadMyReservations() {
     const listEl = document.querySelector("#reservation-list");
     if (!listEl) return;
 
+    await ensureVehicleLookup();
     const reservations = await getJson("/api/my-reservations");
     listEl.innerHTML = reservations.map(reservationRowTemplate).join("");
 }
@@ -247,7 +353,11 @@ async function postVehicleReview(event) {
 
 function bindRentalEvents() {
     document.querySelector("#refresh-vehicles")?.addEventListener("click", loadVehicles);
-    document.querySelector("#location-filter")?.addEventListener("change", loadVehicles);
+    document.querySelector("#location-filter")?.addEventListener("change", applyRentalVehicleFilters);
+    document.querySelector("#category-filter")?.addEventListener("change", applyRentalVehicleFilters);
+    document.querySelector("#price-filter")?.addEventListener("change", applyRentalVehicleFilters);
+    document.querySelector("#vehicle-sort")?.addEventListener("change", applyRentalVehicleFilters);
+    document.querySelector("#vehicle-search")?.addEventListener("input", applyRentalVehicleFilters);
 
     document.addEventListener("click", (event) => {
         const button = event.target.closest(".reserve-btn");
@@ -298,10 +408,12 @@ async function loadAdminDashboard() {
 }
 
 function adminReservationRowTemplate(reservation) {
+    const vehicle = adminState.fleetById.get(reservation.vehicle_id);
     return `
         <tr>
             <td>${reservation.id}</td>
-            <td>${reservation.vehicle_id}</td>
+            <td>${vehicleDisplayName(vehicle)}</td>
+            <td>${vehicle?.license_plate || `ID-${reservation.vehicle_id}`}</td>
             <td>${reservation.user_id ?? "-"}</td>
             <td><input type="date" class="form-control form-control-sm" id="admin-res-start-${reservation.id}" value="${String(reservation.date_from).slice(0, 10)}"></td>
             <td><input type="date" class="form-control form-control-sm" id="admin-res-end-${reservation.id}" value="${String(reservation.date_to).slice(0, 10)}"></td>
@@ -324,7 +436,9 @@ function adminFleetRowTemplate(vehicle) {
     return `
         <tr>
             <td>${vehicle.id}</td>
-            <td>${vehicle.year} ${vehicle.make} ${vehicle.model}</td>
+            <td>${vehicle.make} ${vehicle.model} (${vehicle.year})</td>
+            <td>${vehicle.license_plate || `ID-${vehicle.id}`}</td>
+            <td>${vehicle.category}</td>
             <td>${vehicle.location}</td>
             <td>${formatMoney(vehicle.price_per_day)}</td>
             <td>${vehicle.available ? "Yes" : "No"}</td>
@@ -335,20 +449,68 @@ function adminFleetRowTemplate(vehicle) {
     `;
 }
 
+function sortFleet(vehicles) {
+    const sorted = [...vehicles];
+    const { sortKey, sortDirection } = adminState;
+
+    sorted.sort((left, right) => {
+        const leftValue = sortKey === "vehicle"
+            ? `${left.make} ${left.model} ${left.year}`
+            : left[sortKey];
+        const rightValue = sortKey === "vehicle"
+            ? `${right.make} ${right.model} ${right.year}`
+            : right[sortKey];
+
+        const comparableLeft = toComparable(leftValue);
+        const comparableRight = toComparable(rightValue);
+
+        if (comparableLeft < comparableRight) return sortDirection === "asc" ? -1 : 1;
+        if (comparableLeft > comparableRight) return sortDirection === "asc" ? 1 : -1;
+        return 0;
+    });
+
+    return sorted;
+}
+
+function updateAdminFleetSortIndicators() {
+    const sortButtons = document.querySelectorAll(".admin-fleet-sort");
+    for (const button of sortButtons) {
+        const indicator = button.querySelector(".admin-sort-indicator");
+        if (!indicator) continue;
+
+        const isActive = button.dataset.sortKey === adminState.sortKey;
+        button.classList.toggle("is-active", isActive);
+        indicator.textContent = isActive
+            ? (adminState.sortDirection === "asc" ? "↑" : "↓")
+            : "↕";
+    }
+}
+
+function renderAdminFleet() {
+    const listEl = document.querySelector("#admin-fleet-list");
+    if (!listEl) return;
+
+    listEl.innerHTML = sortFleet(adminState.fleet).map(adminFleetRowTemplate).join("");
+    updateAdminFleetSortIndicators();
+}
+
 async function loadAdminReservations() {
     const listEl = document.querySelector("#admin-reservation-list");
     if (!listEl) return;
+
+    if (adminState.fleetById.size === 0) {
+        await loadAdminFleet();
+    }
 
     const reservations = await getJson("/api/admin/reservations");
     listEl.innerHTML = reservations.map(adminReservationRowTemplate).join("");
 }
 
 async function loadAdminFleet() {
-    const listEl = document.querySelector("#admin-fleet-list");
-    if (!listEl) return;
-
     const fleet = await getJson("/api/admin/fleet");
-    listEl.innerHTML = fleet.map(adminFleetRowTemplate).join("");
+    adminState.fleet = fleet;
+    adminState.fleetById = new Map(fleet.map((vehicle) => [vehicle.id, vehicle]));
+    renderAdminFleet();
 }
 
 async function saveAdminReservation(reservationId) {
@@ -427,6 +589,19 @@ function bindAdminEvents() {
     });
 
     document.addEventListener("click", async (event) => {
+        const sortBtn = event.target.closest(".admin-fleet-sort");
+        if (sortBtn) {
+            const nextKey = sortBtn.dataset.sortKey;
+            if (adminState.sortKey === nextKey) {
+                adminState.sortDirection = adminState.sortDirection === "asc" ? "desc" : "asc";
+            } else {
+                adminState.sortKey = nextKey;
+                adminState.sortDirection = "asc";
+            }
+            renderAdminFleet();
+            return;
+        }
+
         const saveBtn = event.target.closest(".admin-save-reservation-btn");
         if (saveBtn) {
             try {
