@@ -1,17 +1,10 @@
 from __future__ import annotations
-
 import argparse
 import csv
 from pathlib import Path
 import sys
 from datetime import datetime, timedelta, timezone
-
-if __package__ is None or __package__ == "":
-	# Allow running as `python app/cli.py ...` by adding project root to sys.path.
-	sys.path.append(str(Path(__file__).resolve().parents[1]))
-
 from fastapi.routing import APIRoute
-
 from app.database import create_db_and_tables, drop_all, get_cli_session
 from app.main import app
 from app.models.user import Comment, Driver, Reservation, User, Vehicle, VehicleBase, VehicleReview, VehicleReviewBase
@@ -22,6 +15,9 @@ from app.repositories.driver import DriverRepository
 from app.repositories.comment import CommentRepository
 from app.repositories.vehicle_review import VehicleReviewRepository
 from app.utilities.security import encrypt_password
+
+if __package__ is None or __package__ == "":
+	sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -42,32 +38,14 @@ TRINIDAD_LOCATION_PLAN = [
 ALL_MODELS = [User, Vehicle, Reservation, Driver, Comment, VehicleReview]
 
 DEFAULT_USERS = [
-	{
-		"username": "bob",
-		"email": "bob@mail.com",
-		"password": "bobpass",
-		"role": "admin",
-	},
-	{
-		"username": "admin",
-		"email": "admin@trinirent.com",
-		"password": "admin123",
-		"role": "admin",
-	},
-	{
-		"username": "customer1",
-		"email": "customer1@trinirent.com",
-		"password": "customer123",
-		"role": "regular_user",
-	},
-	{
-		"username": "customer2",
-		"email": "customer2@trinirent.com",
-		"password": "customer123",
-		"role": "regular_user",
-	},
+	{"username": "bob", "email": "bob@mail.com", "password": "bobpass", "role": "admin"},
+	{"username": "admin", "email": "admin@trinirent.com", "password": "admin123", "role": "admin"},
+	{"username": "customer1", "email": "customer1@trinirent.com", "password": "customer123", "role": "regular_user"},
+	{"username": "customer2", "email": "customer2@trinirent.com", "password": "customer123", "role": "regular_user"},
 ]
 
+
+# -------------------- CORE SETUP --------------------
 
 def ensure_database_files() -> None:
 	create_db_and_tables()
@@ -80,6 +58,8 @@ def reset_database_schema() -> None:
 	DATABASE_FILE.touch(exist_ok=True)
 
 
+# -------------------- DEBUG HELPERS --------------------
+
 def list_models() -> None:
 	print("Loaded SQLModel tables:")
 	for model in ALL_MODELS:
@@ -88,15 +68,17 @@ def list_models() -> None:
 
 
 def list_routes() -> None:
-	print("Registered backend routes from app.main:app")
+	print("Registered backend routes:")
 	for route in app.routes:
 		if isinstance(route, APIRoute):
 			methods = ",".join(sorted(m for m in route.methods if m not in {"HEAD", "OPTIONS"}))
-			print(f"- {methods:<8} {route.path} -> {route.name}")
+			print(f"- {methods:<8} {route.path}")
 
+
+# -------------------- UTILITIES --------------------
 
 def expand_location_plan() -> list[str]:
-	locations: list[str] = []
+	locations = []
 	for location, count in TRINIDAD_LOCATION_PLAN:
 		locations.extend([location] * count)
 	return locations
@@ -105,105 +87,124 @@ def expand_location_plan() -> list[str]:
 def parse_csv_bool(value: str | None, default: bool = True) -> bool:
 	if value is None:
 		return default
-	lowered = value.strip().lower()
-	if lowered in {"true", "1", "yes", "y"}:
-		return True
-	if lowered in {"false", "0", "no", "n"}:
-		return False
-	return default
+	return value.strip().lower() in {"true", "1", "yes", "y"}
 
 
 def build_image_url(make: str, model: str, view: str) -> str:
-	query = f"{make} {model} car {view}".strip().replace(" ", "+")
-	return f"https://source.unsplash.com/random/1200x800/?{query}"
+	# 🔥 Stable image (no random failures)
+	return "https://images.unsplash.com/photo-1549924231-f129b911e442?auto=format&fit=crop&w=1200&q=80"
 
+
+# -------------------- VEHICLE LOADING --------------------
 
 def load_demo_vehicle_data() -> list[VehicleBase]:
-	if not VEHICLES_CSV_PATH.exists():
-		raise FileNotFoundError(f"Missing vehicles source file: {VEHICLES_CSV_PATH}")
-
 	locations = expand_location_plan()
-	with VEHICLES_CSV_PATH.open(newline="", encoding="utf-8-sig") as csv_file:
-		reader = csv.DictReader(csv_file)
-		rows = list(reader)
 
-	needed = len(locations)
-	if len(rows) < needed:
-		raise RuntimeError(f"vehicles.csv has {len(rows)} rows, but {needed} rows are required")
+	# 🔥 If CSV missing → generate data
+	if not VEHICLES_CSV_PATH.exists():
+		print("⚠️ vehicles.csv not found — generating demo vehicles...")
 
-	demo_vehicles: list[VehicleBase] = []
-	for row, location in zip(rows[:needed], locations):
-		make = (row.get("make") or "").strip()
-		model = (row.get("model") or "").strip()
-		demo_vehicles.append(
+		demo = []
+		for i, location in enumerate(locations):
+			make = f"Brand{i+1}"
+			model = f"Model{i+1}"
+
+			demo.append(
+				VehicleBase(
+					make=make,
+					model=model,
+					year=2020,
+					category="Sedan",
+					price_per_day=250 + (i * 10),
+					available=True,
+					location=location,
+					url_image=build_image_url(make, model, "ext"),
+					exterior_image_url=build_image_url(make, model, "ext"),
+					interior_image_url=build_image_url(make, model, "int"),
+					description=f"{make} {model} is a reliable rental option.",
+					seats=5,
+					transmission="Automatic",
+					fuel_type="Gasoline",
+				)
+			)
+
+		return demo
+
+	# ✅ CSV exists → use it
+	with VEHICLES_CSV_PATH.open(newline="", encoding="utf-8-sig") as f:
+		rows = list(csv.DictReader(f))
+
+	locations_needed = min(len(locations), len(rows))
+
+	demo = []
+	for row, location in zip(rows[:locations_needed], locations):
+		make = row.get("make", "").strip()
+		model = row.get("model", "").strip()
+
+		demo.append(
 			VehicleBase(
 				make=make,
 				model=model,
-				year=int(row.get("year") or 0),
-				category=(row.get("category") or "").strip(),
-				price_per_day=float(row.get("price_per_day") or 0.0),
-				available=parse_csv_bool(row.get("available"), default=True),
+				year=int(row.get("year") or 2020),
+				category=row.get("category") or "Sedan",
+				price_per_day=float(row.get("price_per_day") or 250),
+				available=parse_csv_bool(row.get("available")),
 				location=location,
-				url_image=((row.get("url_image") or "").strip() or build_image_url(make, model, "exterior")),
-				exterior_image_url=((row.get("exterior_image_url") or "").strip() or build_image_url(make, model, "exterior")),
-				interior_image_url=((row.get("interior_image_url") or "").strip() or build_image_url(make, model, "interior")),
-				description=((row.get("description") or "").strip() or f"{make} {model} is a comfortable rental choice for Trinidad roads."),
+				url_image=row.get("url_image") or build_image_url(make, model, "ext"),
+				exterior_image_url=row.get("exterior_image_url") or build_image_url(make, model, "ext"),
+				interior_image_url=row.get("interior_image_url") or build_image_url(make, model, "int"),
+				description=row.get("description") or f"{make} {model} is a great rental.",
 				seats=int(row.get("seats") or 5),
-				transmission=((row.get("transmission") or "").strip() or "Automatic"),
-				fuel_type=((row.get("fuel_type") or "").strip() or "Gasoline"),
+				transmission=row.get("transmission") or "Automatic",
+				fuel_type=row.get("fuel_type") or "Gasoline",
 			)
 		)
 
-	return demo_vehicles
+	return demo
 
+
+# -------------------- SEEDING --------------------
 
 def seed_users() -> int:
 	created = 0
 	with get_cli_session() as db:
-		user_repo = UserRepository(db)
-		for user_data in DEFAULT_USERS:
-			existing = user_repo.get_by_username(user_data["username"])
-			if existing:
+		repo = UserRepository(db)
+		for u in DEFAULT_USERS:
+			if repo.get_by_username(u["username"]):
 				continue
-
-			user_repo.create(
-				User(
-					username=user_data["username"],
-					email=user_data["email"],
-					password=encrypt_password(user_data["password"]),
-					role=user_data["role"],
-				)
-			)
+			repo.create(User(
+				username=u["username"],
+				email=u["email"],
+				password=encrypt_password(u["password"]),
+				role=u["role"]
+			))
 			created += 1
-
 	return created
 
 
-def seed_vehicles() -> tuple[int, dict[str, int]]:
+def seed_vehicles():
 	with get_cli_session() as db:
-		vehicle_repo = VehicleRepository(db)
-		existing_count = vehicle_repo.count()
+		repo = VehicleRepository(db)
 
-		if existing_count > 0:
-			return 0, vehicle_repo.count_by_location()
+		if repo.count() > 0:
+			return 0, repo.count_by_location()
 
-		demo_vehicles = load_demo_vehicle_data()
-		vehicle_repo.create_many(demo_vehicles)
-		counts = vehicle_repo.count_by_location()
-		return len(demo_vehicles), counts
+		data = load_demo_vehicle_data()
+		repo.create_many(data)
+		return len(data), repo.count_by_location()
 
 
-def seed_rental_activity() -> tuple[int, int, int, int]:
+def seed_rental_activity():
 	with get_cli_session() as db:
-		reservation_repo = ReservationRepository(db)
+		res_repo = ReservationRepository(db)
 		driver_repo = DriverRepository(db)
 		comment_repo = CommentRepository(db)
-		vehicle_review_repo = VehicleReviewRepository(db)
+		review_repo = VehicleReviewRepository(db)
 		user_repo = UserRepository(db)
 		vehicle_repo = VehicleRepository(db)
 
-		if reservation_repo.count() > 0:
-			return reservation_repo.count(), driver_repo.count(), comment_repo.count(), vehicle_review_repo.count()
+		if res_repo.count() > 0:
+			return res_repo.count(), driver_repo.count(), comment_repo.count(), review_repo.count()
 
 		users = user_repo.get_all_users()
 		vehicles = vehicle_repo.get_all_vehicles()
@@ -211,123 +212,92 @@ def seed_rental_activity() -> tuple[int, int, int, int]:
 		if not users or not vehicles:
 			return 0, 0, 0, 0
 
-		reservation_records: list[Reservation] = []
-		for index, vehicle in enumerate(vehicles[:8]):
-			assigned_user = users[index % len(users)]
-			start_dt = datetime.now(timezone.utc) + timedelta(days=index + 1)
-			end_dt = start_dt + timedelta(days=2)
-			reservation_records.append(
-				Reservation(
-					vehicle_id=vehicle.id,
-					user_id=assigned_user.id,
-					date_from=start_dt,
-					date_to=end_dt,
-					pickup_location=vehicle.location,
-					return_location=vehicle.location,
-					status="active",
-					total_cost=vehicle.price_per_day * 2,
-					payment_method="card",
-					comment="Seeded reservation",
-				)
-			)
+		reservations = []
+		for i, v in enumerate(vehicles[:8]):
+			u = users[i % len(users)]
+			start = datetime.now(timezone.utc) + timedelta(days=i + 1)
+			end = start + timedelta(days=2)
 
-		created_reservations = reservation_repo.create_many(reservation_records)
+			reservations.append(Reservation(
+				vehicle_id=v.id,
+				user_id=u.id,
+				date_from=start,
+				date_to=end,
+				pickup_location=v.location,
+				return_location=v.location,
+				status="active",
+				total_cost=v.price_per_day * 2,
+				payment_method="card"
+			))
 
-		driver_records: list[Driver] = []
-		for index, reservation in enumerate(created_reservations):
-			driver_records.append(
-				Driver(
-					first_name=f"Driver{index + 1}",
-					last_name="Seed",
-					email=f"driver{index + 1}@trinirent.com",
-					phone=f"8685550{100 + index}",
-					country="Trinidad and Tobago",
-					city=reservation.pickup_location,
-					license_num=f"L-{100000 + index}",
-					reservation_id=reservation.id,
-				)
-			)
+		created_res = res_repo.create_many(reservations)
 
-		comment_records: list[Comment] = []
-		for index, user in enumerate(users):
-			comment_records.append(
-				Comment(
-					user_id=user.id,
-					content=f"Seed feedback #{index + 1}: booking flow for {user.username} is ready.",
-				)
-			)
+		drivers = []
+		for i, r in enumerate(created_res):
+			drivers.append(Driver(
+				first_name=f"Driver{i+1}",
+				phone=f"868555{i+100}",
+				reservation_id=r.id
+			))
 
-		created_drivers = driver_repo.create_many(driver_records)
-		created_comments = comment_repo.create_many(comment_records)
+		comments = [
+			Comment(user_id=u.id, content=f"Feedback from {u.username}")
+			for u in users
+		]
 
-		review_count = 0
-		for index, vehicle in enumerate(vehicles[:10]):
-			user = users[index % len(users)]
-			vehicle_review_repo.create(
-				vehicle_id=vehicle.id,
+		driver_repo.create_many(drivers)
+		comment_repo.create_many(comments)
+
+		for i, v in enumerate(vehicles[:10]):
+			u = users[i % len(users)]
+			review_repo.create(
+				vehicle_id=v.id,
 				review_data=VehicleReviewBase(
-					rating=5 - (index % 2),
-					comment=f"Great drive quality and clean interior for the {vehicle.make} {vehicle.model}.",
-					reviewer_name=user.username,
+					rating=5,
+					comment=f"Great car: {v.make} {v.model}",
+					reviewer_name=u.username
 				),
-				user_id=user.id,
+				user_id=u.id
 			)
-			review_count += 1
 
-		return len(created_reservations), len(created_drivers), len(created_comments), review_count
+		return len(created_res), len(drivers), len(comments), 10
 
 
-def initialize_database() -> None:
+# -------------------- MAIN --------------------
+
+def initialize_database():
 	reset_database_schema()
 
-	users_created = seed_users()
-	vehicles_created, vehicle_counts = seed_vehicles()
-	reservations_count, drivers_count, comments_count, review_count = seed_rental_activity()
+	u = seed_users()
+	v, counts = seed_vehicles()
+	r, d, c, rev = seed_rental_activity()
 
-	print(f"Database file ready: {DATABASE_FILE}")
-	print(f"Users created: {users_created}")
-	print(f"Vehicles created from vehicles.csv: {vehicles_created}")
-	print(f"Reservations available: {reservations_count}")
-	print(f"Drivers available: {drivers_count}")
-	print(f"Comments available: {comments_count}")
-	print(f"Vehicle reviews available: {review_count}")
+	print(f"DB ready: {DATABASE_FILE}")
+	print(f"Users: {u}, Vehicles: {v}, Reservations: {r}, Drivers: {d}, Comments: {c}, Reviews: {rev}")
 
-	if vehicle_counts:
-		print("Vehicle inventory by Trinidad location:")
-		for location, count in sorted(vehicle_counts.items()):
-			print(f"- {location}: {count}")
+	if counts:
+		print("Vehicles by location:")
+		for loc, count in counts.items():
+			print(f"- {loc}: {count}")
 
 
-def build_parser() -> argparse.ArgumentParser:
-	parser = argparse.ArgumentParser(description="Repository-driven CLI for database setup and inspection.")
-	subparsers = parser.add_subparsers(dest="command", required=True)
+def main():
+	parser = argparse.ArgumentParser()
+	sub = parser.add_subparsers(dest="cmd", required=True)
 
-	subparsers.add_parser("initialize", help="Create database.db and seed repository data from vehicles.csv.")
-	subparsers.add_parser("init-db", help="Alias for initialize.")
-	subparsers.add_parser("list-models", help="List SQLModel tables.")
-	subparsers.add_parser("list-routes", help="List backend routes registered in app.main.")
+	sub.add_parser("initialize")
+	sub.add_parser("list-models")
+	sub.add_parser("list-routes")
 
-	return parser
-
-
-def main() -> None:
-	parser = build_parser()
 	args = parser.parse_args()
 
-	if args.command in {"initialize", "init-db"}:
+	if args.cmd == "initialize":
 		initialize_database()
-		return
-
-	if args.command == "list-models":
+	elif args.cmd == "list-models":
 		ensure_database_files()
 		list_models()
-		return
-
-	if args.command == "list-routes":
+	elif args.cmd == "list-routes":
 		list_routes()
-		return
-
-	parser.print_help()
 
 
 if __name__ == "__main__":
