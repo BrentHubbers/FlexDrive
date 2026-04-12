@@ -67,16 +67,22 @@ function initializeTrinidadMap() {
 
     const map = L.map("trinidad-branch-map").setView([10.55, -61.35], 9);
 
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        maxZoom: 18,
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
         attribution: "&copy; OpenStreetMap contributors",
     }).addTo(map);
 
+    const markers = [];
     Object.entries(TRINIDAD_BRANCHES).forEach(([location, coords]) => {
         const marker = L.marker([coords.lat, coords.lng]).addTo(map);
         marker.bindPopup(`<strong>${location}</strong><br/>Click to view available rentals`);
         marker.on("click", () => selectLocation(location));
+        markers.push(marker);
     });
+
+    if (markers.length > 0) {
+        map.fitBounds(L.featureGroup(markers).getBounds().pad(0.2));
+    }
 }
 
 function vehicleCardTemplate(vehicle) {

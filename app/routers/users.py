@@ -62,6 +62,31 @@ async def list_vehicles(db: SessionDep, location: str | None = None, available_o
     return response
 
 
+@api_router.get("/vehicles/locations", response_model=list[str])
+async def list_vehicle_locations(db: SessionDep):
+    vehicle_repo = VehicleRepository(db)
+    counts = vehicle_repo.count_by_location()
+
+    default_locations = [
+        "Port of Spain",
+        "San Fernando",
+        "Chaguanas",
+        "Arima",
+        "Diego Martin",
+        "Tunapuna",
+        "Couva",
+        "Point Fortin",
+    ]
+
+    db_locations = [location.strip() for location in counts.keys() if location and location.strip()]
+    ordered_locations = list(default_locations)
+    for location in sorted(db_locations):
+        if location not in ordered_locations:
+            ordered_locations.append(location)
+
+    return ordered_locations
+
+
 @api_router.get("/vehicles/{vehicle_id}", response_model=VehicleDetailResponse)
 async def get_vehicle_detail(vehicle_id: int, db: SessionDep):
     vehicle_repo = VehicleRepository(db)
@@ -103,13 +128,6 @@ async def create_vehicle_review(vehicle_id: int, payload: VehicleReviewCreate, d
         user_id=user.id,
     )
     return VehicleReviewResponse(**review.model_dump())
-
-
-@api_router.get("/vehicles/locations", response_model=list[str])
-async def list_vehicle_locations(db: SessionDep):
-    vehicle_repo = VehicleRepository(db)
-    counts = vehicle_repo.count_by_location()
-    return sorted(counts.keys())
 
 
 @api_router.get("/my-reservations", response_model=list[ReservationResponse])
