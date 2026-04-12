@@ -9,98 +9,111 @@
 <script src="{{ url_for('static', path='js/app.js')}}"></script>
 {% endblock %}
 
-
 {% block subpage_content %}
-    <div class="container-fluid rental-app" id="content">
-        <div class="card shadow-sm mb-3">
-            <div class="card-body">
-                <h5 class="card-title mb-2">Trinidad Branch Map</h5>
-                <p class="text-muted mb-3">Click any map marker to jump to that rental branch and filter available cars.</p>
-                <div id="trinidad-branch-map"></div>
+<div class="container-fluid rental-app" id="content">
+
+    <!-- FILTERS -->
+    <div class="row g-3 mb-3">
+        <div class="col-lg-4">
+            <label class="form-label">Filter by location</label>
+            <select class="form-select" id="location-filter">
+                <option value="">All locations</option>
+            </select>
+        </div>
+        <div class="col-lg-4 d-flex align-items-end">
+            <button class="btn btn-primary" id="refresh-vehicles">Refresh Vehicles</button>
+        </div>
+    </div>
+
+    <!-- VEHICLE LIST -->
+    <div class="row g-3 mb-4" id="vehicle-list"></div>
+
+    <!-- RESERVATIONS -->
+    <div class="card shadow-sm mb-3">
+        <div class="card-body">
+            <h5 class="card-title mb-3">My Reservations</h5>
+            <div class="table-responsive">
+                <table class="table table-striped align-middle">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Vehicle ID</th>
+                            <th>Pickup</th>
+                            <th>Return</th>
+                            <th>Status</th>
+                            <th>Total Cost</th>
+                        </tr>
+                    </thead>
+                    <tbody id="reservation-list"></tbody>
+                </table>
             </div>
         </div>
+    </div>
 
-        <div class="row g-3 mb-3">
-            <div class="col-lg-4">
-                <label class="form-label">Filter by location</label>
-                <select class="form-select" id="location-filter">
-                    <option value="">All locations</option>
-                </select>
-            </div>
-            <div class="col-lg-4 d-flex align-items-end">
-                <button class="btn btn-primary" id="refresh-vehicles">Refresh Vehicles</button>
-            </div>
-        </div>
-
-        <div class="row g-3 mb-4" id="vehicle-list"></div>
-
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <h5 class="card-title mb-3">My Reservations</h5>
-                <div class="table-responsive">
-                    <table class="table table-striped align-middle">
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Vehicle ID</th>
-                                <th>Pickup</th>
-                                <th>Return</th>
-                                <th>Status</th>
-                                <th>Total Cost</th>
-                            </tr>
-                        </thead>
-                        <tbody id="reservation-list"></tbody>
-                    </table>
+    <!-- VEHICLE DETAILS MODAL -->
+    <div class="modal fade" id="vehicleDetailsModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="vehicle-modal-title">Vehicle Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-            </div>
-        </div>
 
-        <div class="modal fade" id="vehicleDetailsModal" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog modal-xl modal-dialog-scrollable">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="vehicle-modal-title">Vehicle Details</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <div class="modal-body">
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <img id="vehicle-exterior-image" class="img-fluid rounded" alt="Vehicle exterior">
+                        </div>
+                        <div class="col-md-6">
+                            <img id="vehicle-interior-image" class="img-fluid rounded" alt="Vehicle interior">
+                        </div>
                     </div>
-                    <div class="modal-body">
-                        <div class="row g-3 mb-3">
-                            <div class="col-md-6">
-                                <img id="vehicle-exterior-image" class="img-fluid rounded" alt="Vehicle exterior">
+
+                    <div class="mb-3" id="vehicle-description"></div>
+                    <ul class="list-group mb-4" id="vehicle-specs"></ul>
+
+                    <h6>Reviews</h6>
+                    <div id="vehicle-reviews" class="mb-3"></div>
+
+                    <form id="vehicle-review-form" class="border rounded p-3 bg-light">
+                        <input type="hidden" id="review-vehicle-id">
+
+                        <div class="row g-2 mb-2">
+                            <div class="col-md-3">
+                                <label class="form-label">Rating</label>
+                                <select id="review-rating" class="form-select" required>
+                                    <option value="5">5</option>
+                                    <option value="4">4</option>
+                                    <option value="3">3</option>
+                                    <option value="2">2</option>
+                                    <option value="1">1</option>
+                                </select>
                             </div>
-                            <div class="col-md-6">
-                                <img id="vehicle-interior-image" class="img-fluid rounded" alt="Vehicle interior">
+
+                            <div class="col-md-9">
+                                <label class="form-label">Comment</label>
+                                <input id="review-comment" class="form-control" required
+                                    placeholder="Share your experience with this car">
                             </div>
                         </div>
-                        <div class="mb-3" id="vehicle-description"></div>
-                        <ul class="list-group mb-4" id="vehicle-specs"></ul>
 
-                        <h6>Reviews</h6>
-                        <div id="vehicle-reviews" class="mb-3"></div>
-
-                        <form id="vehicle-review-form" class="border rounded p-3 bg-light">
-                            <input type="hidden" id="review-vehicle-id">
-                            <div class="row g-2 mb-2">
-                                <div class="col-md-3">
-                                    <label class="form-label">Rating</label>
-                                    <select id="review-rating" class="form-select" required>
-                                        <option value="5">5</option>
-                                        <option value="4">4</option>
-                                        <option value="3">3</option>
-                                        <option value="2">2</option>
-                                        <option value="1">1</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-9">
-                                    <label class="form-label">Comment</label>
-                                    <input id="review-comment" class="form-control" required placeholder="Share your experience with this car">
-                                </div>
-                            </div>
-                            <button class="btn btn-outline-primary" type="submit">Post Review</button>
-                        </form>
-                    </div>
+                        <button class="btn btn-outline-primary" type="submit">Post Review</button>
+                    </form>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- MAP MOVED TO BOTTOM -->
+    <div class="card shadow-sm mb-3">
+        <div class="card-body">
+            <h5 class="card-title mb-2">Trinidad Branch Map</h5>
+            <p class="text-muted mb-3">
+                Click any map marker to jump to that rental branch and filter available cars.
+            </p>
+            <div id="trinidad-branch-map"></div>
+        </div>
+    </div>
+
+</div>
 {% endblock %}
