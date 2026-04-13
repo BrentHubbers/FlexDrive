@@ -24,6 +24,7 @@
         transition: all 0.3s;
         background: #ad1111;
         color: #fff;
+        border-right: 4px solid #000;
     }
 
     #sidebar.collapsed {
@@ -31,7 +32,7 @@
     }
 
     #sidebar .nav-link {
-        color: #adb5bd;
+        color: #ffffff;
         font-weight: 500;
     }
 
@@ -40,6 +41,20 @@
         color: #000000;
         background-color: #ffffff;
         border-radius: 0.5rem;
+    }
+
+    .logout-link {
+        color: #ffffff !important;
+        font-size: 1.05rem !important;
+        font-weight: 600 !important;
+        padding: 0.65rem 1rem !important;
+        border: 1.5px solid rgba(255,255,255,0.4) !important;
+        border-radius: 0.5rem !important;
+    }
+
+    .logout-link:hover {
+        background-color: rgba(255,255,255,0.15) !important;
+        color: #ffffff !important;
     }
 
     #content {
@@ -62,33 +77,63 @@
     }
 
     .navbar {
-        border-bottom: 1px solid #ffffff;
+        border-bottom: 3px solid #C0152A;
         width: 100%;
         border-radius: 0 !important;
     }
 
     .top-header-bar {
-        margin: -1rem -1rem 1rem -1rem;
+        margin: -1rem -1rem 0 -1rem;
         background: #ffffff;
-        border-bottom: 1px solid #e5e5e5;
+        border-bottom: 3px solid #C0152A;
         display: flex;
         align-items: center;
         gap: 1rem;
+        padding: 0.25rem 1rem;
+        height: 70px;
+        overflow: hidden;
     }
 
     .top-header-brand {
         flex: 1;
-        text-align: center;
-        font-weight: 700;
-        font-size: 1.8rem;
-        color: #111111;
+        text-align: auto;
         text-decoration: none;
+        display: auto;
+        align-items: auto;
+        justify-content: auto;
+    }
+
+    .top-header-brand img {
+        height: 150px;
+        width: auto;
     }
 
     .top-header-spacer {
         width: 2.75rem;
         flex: 0 0 2.75rem;
     }
+
+    .gold-bar {
+        height: 3px;
+        background: linear-gradient(90deg, #F5A623, #C0152A, transparent);
+        margin: 0 -1rem 1rem -1rem;
+    }
+
+    #menu-toggle {
+        border: 1.5px solid rgba(0,0,0,0.3);
+        background: transparent;
+        color: #000;
+        border-radius: 6px;
+    }
+
+    #menu-toggle:hover {
+        background: rgba(0,0,0,0.1);
+    }
+
+    footer h6 {
+    color: #F5A623;
+    font-weight: 600;
+}
 </style>
 
 {% block additional_styles %}{% endblock %}
@@ -126,35 +171,35 @@
             {% if user.role == 'admin' %}
             <li class="nav-item">
                 <a class="nav-link d-flex align-items-center {{ 'active' if request.path == '/admin' }}" href="/admin">
-                    <span class="material-symbols-outlined me-2">Dashboard</span>
+                    <span class="material-symbols-outlined me-2">dashboard</span>
                     Admin Panel
                 </a>
             </li>
             {% endif %}
-            
-            <li class="nav-item mt-auto">
-                <a class="nav-link d-flex align-items-center text-danger" href="/logout">
-                    <span class="material-symbols-outlined me-2">logout</span>
-                    Logout
-                </a>
-            </li>
         </ul>
+
+        <div class="pt-3 border-top border-secondary mt-3">
+            <a class="nav-link logout-link d-flex align-items-center" href="/logout">
+                <span class="material-symbols-outlined me-2">logout</span>
+                Logout
+            </a>
+        </div>
     </nav>
 
     <div id="content">
-        <nav class="navbar navbar-expand-lg mb-4 px-3 top-header-bar">
-            <button class="btn btn-outline-secondary" id="menu-toggle">
-                <span class="material-symbols-outlined md-dark">menu</span>
+        <nav class="navbar navbar-expand-lg mb-0 px-3 top-header-bar">
+            <button class="btn" id="menu-toggle">
+                <span class="material-symbols-outlined" style="color:#000">menu</span>
             </button>
 
             <a href="/app" class="top-header-brand">
-                FlexDrive
+                <img src="{{ url_for('static', path='img/logo.svg') }}" alt="FlexDrive">
             </a>
 
             <span class="top-header-spacer" aria-hidden="true"></span>
-
         </nav>
-        
+        <div class="gold-bar"></div>
+
         <div class="row">
             <div class="col-12">
                 {% for message in get_flashed_messages(request) %}
@@ -163,14 +208,43 @@
             </div>
         </div>
 
-
         {% block subpage_content %}{% endblock %}
+       <!-- Footer -->
+<footer style="margin-top: auto; padding: 1.5rem; background-color: #111; color: #fff; border-top: 3px solid #C0152A;">
+    <div class="row">
+        <div class="col-md-4">
+            <h6>Locations:</h6>
+            <div class="row">
+                <div class="col-6">
+                    <p class="mb-1">Port of Spain</p>
+                    <p class="mb-1">San Fernando</p>
+                    <p class="mb-1">Chaguanas</p>
+                    <p class="mb-1">Arima</p>
+                </div>
+                <div class="col-6">
+                    <p class="mb-1">Diego Martin</p>
+                    <p class="mb-1">Tunapuna</p>
+                    <p class="mb-1">Couva</p>
+                    <p class="mb-1">Point Fortin</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <h6>Contact:</h6>
+            <p class="mb-1">Phone: (868) 555-1234</p>
+        </div>
+
+        <div class="col-md-4">
+            <h6>Email:</h6>
+            <p class="mb-1">support@flexdrive.com</p>
+        </div>
+    </div>
+</footer>
 
     </div>
 
-
 </div>
-
 
 <script>
     document.getElementById("menu-toggle").addEventListener("click", function () {
