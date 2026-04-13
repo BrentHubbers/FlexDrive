@@ -63,6 +63,31 @@
 
     .navbar {
         border-bottom: 1px solid #ffffff;
+        width: 100%;
+        border-radius: 0 !important;
+    }
+
+    .top-header-bar {
+        margin: -1rem -1rem 1rem -1rem;
+        background: #ffffff;
+        border-bottom: 1px solid #e5e5e5;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .top-header-brand {
+        flex: 1;
+        text-align: center;
+        font-weight: 700;
+        font-size: 1.8rem;
+        color: #111111;
+        text-decoration: none;
+    }
+
+    .top-header-spacer {
+        width: 2.75rem;
+        flex: 0 0 2.75rem;
     }
 </style>
 
@@ -74,23 +99,35 @@
 {% block content %}
 <div id="wrapper">
 
-    <nav id="sidebar" class="p-3 d-flex flex-column vh-100">
+    <nav id="sidebar" class="p-3 d-flex flex-column vh-100 collapsed">
         <h4 class="mb-4 text-center py-4">
-            <a href="/app" class="text-white text-decoration-none">FlexDrive</a>
+            <a href="/app" class="text-white text-decoration-none fs-3">Dashboard</a>
         </h4>
 
         <ul class="nav nav-pills flex-column gap-2 flex-grow-1">
             <li class="nav-item">
                 <a class="nav-link d-flex align-items-center {{ 'active' if request.path == '/app' }}" href="/app">
+                    <span class="material-symbols-outlined me-2">dashboard</span>
+                    Home
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link d-flex align-items-center {{ 'active' if request.path == '/vehicles' }}" href="/vehicles">
                     <span class="material-symbols-outlined me-2">directions_car</span>
-                    Rentals
+                    Vehicles
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link d-flex align-items-center {{ 'active' if request.path == '/reservations' }}" href="/reservations">
+                    <span class="material-symbols-outlined me-2">event_list</span>
+                    Reservations
                 </a>
             </li>
             {% if user.role == 'admin' %}
             <li class="nav-item">
                 <a class="nav-link d-flex align-items-center {{ 'active' if request.path == '/admin' }}" href="/admin">
-                    <span class="material-symbols-outlined me-2">dashboard</span>
-                    Admin Dashboard
+                    <span class="material-symbols-outlined me-2">Dashboard</span>
+                    Admin Panel
                 </a>
             </li>
             {% endif %}
@@ -105,14 +142,17 @@
     </nav>
 
     <div id="content">
-        <nav class="navbar navbar-expand-lg bg-white mb-4 px-3 rounded-3 shadow-sm">
+        <nav class="navbar navbar-expand-lg mb-4 px-3 top-header-bar">
             <button class="btn btn-outline-secondary" id="menu-toggle">
                 <span class="material-symbols-outlined md-dark">menu</span>
             </button>
 
-            <div class="ms-auto d-flex align-items-center gap-3">
-                <span class="fw-semibold">Welcome back, {{user.username}}</span>
-            </div>
+            <a href="/app" class="top-header-brand">
+                FlexDrive
+            </a>
+
+            <span class="top-header-spacer" aria-hidden="true"></span>
+
         </nav>
         
         <div class="row">

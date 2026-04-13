@@ -1,6 +1,6 @@
 from fastapi.responses import RedirectResponse
 from fastapi import Request, status
-from app.dependencies.auth import IsUserLoggedIn, get_current_user, is_admin
+from app.dependencies.auth import IsUserLoggedIn
 from app.dependencies.session import SessionDep
 from . import router
 
@@ -12,9 +12,6 @@ async def index_view(
     db: SessionDep
 ):
     if user_logged_in:
-        user = await get_current_user(request, db)
-        if await is_admin(user):
-            return RedirectResponse(url=request.url_for('admin_home_view'), status_code=status.HTTP_303_SEE_OTHER)
         return RedirectResponse(url=request.url_for('user_home_view'), status_code=status.HTTP_303_SEE_OTHER)
     response = RedirectResponse(url=request.url_for('login_view'), status_code=status.HTTP_303_SEE_OTHER)
     response.delete_cookie(

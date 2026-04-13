@@ -1,0 +1,248 @@
+{% extends "authenticated-base.html" %}
+
+{% block external_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+{% endblock %}
+
+{% block external_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script src="{{ url_for('static', path='js/app.js')}}"></script>
+{% endblock %}
+
+{% block additional_styles %}
+<style>
+    .vehicle-hero {
+        background:
+            radial-gradient(circle at top right, rgba(247, 181, 0, 0.24), transparent 28%),
+            linear-gradient(135deg, rgba(177, 10, 10, 0.96), rgba(8, 8, 12, 0.98));
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.24);
+        overflow: hidden;
+    }
+
+    .vehicle-hero::before {
+        content: "";
+        position: absolute;
+        inset: -30px auto auto -40px;
+        width: 180px;
+        height: 180px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.08);
+        filter: blur(8px);
+    }
+
+    .vehicle-toolbar {
+        background: rgba(255, 255, 255, 0.96);
+        border: 1px solid rgba(177, 10, 10, 0.08);
+        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.14);
+    }
+
+    .vehicle-card {
+        border-radius: 1.1rem;
+        overflow: hidden;
+        border: 0;
+        box-shadow: 0 18px 45px rgba(0, 0, 0, 0.16);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .vehicle-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 24px 55px rgba(0, 0, 0, 0.22);
+    }
+
+    .vehicle-card .card-img-top {
+        height: 250px;
+        object-fit: cover;
+    }
+
+    .vehicle-card .card-title {
+        font-size: 1.1rem;
+    }
+
+    .vehicle-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.45rem 0.75rem;
+        border-radius: 999px;
+        background: rgba(177, 10, 10, 0.08);
+        color: #8f0909;
+        font-weight: 600;
+    }
+
+    #trinidad-branch-map {
+        height: 360px;
+        width: 100%;
+        border-radius: 0.95rem;
+    }
+
+    .vehicle-spec-strip {
+        background: linear-gradient(135deg, rgba(247, 181, 0, 0.1), rgba(255, 255, 255, 0.04));
+        border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+</style>
+{% endblock %}
+
+{% block subpage_content %}
+<div class="container-fluid py-3 rental-app vehicle-page">
+    <div class="card vehicle-hero text-white mb-4 position-relative">
+        <div class="card-body p-4 p-lg-5 position-relative">
+            <div class="row align-items-center g-4">
+                <div class="col-lg-7">
+                    <div class="vehicle-badge mb-3">
+                        <span class="material-symbols-outlined" style="font-size: 1rem;">tune</span>
+                        Fleet browser
+                    </div>
+                    <h1 class="display-5 fw-bold mb-3">Find the right vehicle fast.</h1>
+                    <p class="lead text-white-50 mb-4">
+                        Search the fleet, sort it your way, and use the map to jump to a branch instantly.
+                    </p>
+                    <div class="d-flex flex-wrap gap-3">
+                        <a href="/reservations" class="btn btn-outline-light btn-lg px-4">My Reservations</a>
+                        <a href="/app" class="btn btn-primary btn-lg px-4">Back to Home</a>
+                    </div>
+                </div>
+                <div class="col-lg-5">
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <div class="card vehicle-spec-strip text-white h-100">
+                                <div class="card-body">
+                                    <div class="small text-white-50">Sort</div>
+                                    <div class="fw-semibold">Name, price, or year</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="card vehicle-spec-strip text-white h-100">
+                                <div class="card-body">
+                                    <div class="small text-white-50">Filter</div>
+                                    <div class="fw-semibold">Category and location</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="card vehicle-spec-strip text-white">
+                                <div class="card-body d-flex align-items-center gap-3">
+                                    <span class="material-symbols-outlined fs-1">map</span>
+                                    <div>
+                                        <div class="small text-white-50">Map driven</div>
+                                        <div class="fw-semibold">Branch selection with one click</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FILTERS -->
+    <div class="card vehicle-toolbar mb-4 rounded-4">
+        <div class="card-body p-4">
+            <div class="row g-3">
+                <div class="col-12">
+                    <label class="form-label fw-semibold">Search vehicles</label>
+                    <input class="form-control form-control-lg" id="vehicle-search" placeholder="Search by make, model, year, category">
+                </div>
+            </div>
+
+            <div class="row g-3 mt-1 align-items-end">
+                <div class="col-12 col-lg-4">
+                    <label class="form-label fw-semibold">Category</label>
+                    <select class="form-select form-select-lg" id="category-filter">
+                        <option value="">All categories</option>
+                    </select>
+                </div>
+                <div class="col-12 col-lg-4">
+                    <label class="form-label fw-semibold">Sort by</label>
+                    <select class="form-select form-select-lg" id="vehicle-sort">
+                        <option value="name-asc">Name (A-Z)</option>
+                        <option value="price-asc">Price (Low to High)</option>
+                        <option value="price-desc">Price (High to Low)</option>
+                        <option value="year-desc">Year (Newest)</option>
+                        <option value="year-asc">Year (Oldest)</option>
+                    </select>
+                </div>
+                <div class="col-12 col-lg-4">
+                    <label class="form-label fw-semibold">Location</label>
+                    <select class="form-select form-select-lg" id="location-filter">
+                        <option value="">All locations</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- VEHICLE LIST -->
+    <div class="row g-3 mb-4" id="vehicle-list"></div>
+
+    <!-- VEHICLE DETAILS MODAL -->
+    <div class="modal fade" id="vehicleDetailsModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="vehicle-modal-title">Vehicle Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <div class="modal-body">
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <img id="vehicle-exterior-image" class="img-fluid rounded" alt="Vehicle exterior">
+                        </div>
+                        <div class="col-md-6">
+                            <img id="vehicle-interior-image" class="img-fluid rounded" alt="Vehicle interior">
+                        </div>
+                    </div>
+
+                    <div class="mb-3" id="vehicle-description"></div>
+                    <ul class="list-group mb-4" id="vehicle-specs"></ul>
+
+                    <h6>Reviews</h6>
+                    <div id="vehicle-reviews" class="mb-3"></div>
+
+                    <form id="vehicle-review-form" class="border rounded p-3 bg-light">
+                        <input type="hidden" id="review-vehicle-id">
+
+                        <div class="row g-2 mb-2">
+                            <div class="col-md-3">
+                                <label class="form-label">Rating</label>
+                                <select id="review-rating" class="form-select" required>
+                                    <option value="5">5</option>
+                                    <option value="4">4</option>
+                                    <option value="3">3</option>
+                                    <option value="2">2</option>
+                                    <option value="1">1</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-9">
+                                <label class="form-label">Comment</label>
+                                <input id="review-comment" class="form-control" required
+                                    placeholder="Share your experience with this car">
+                            </div>
+                        </div>
+
+                        <button class="btn btn-outline-primary" type="submit">Post Review</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-3 border-0 rounded-4 overflow-hidden">
+        <div class="card-body p-4 p-lg-5">
+            <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-3">
+                <div>
+                    <h5 class="card-title mb-1">Trinidad Branch Map</h5>
+                    <p class="text-muted mb-0">Click any marker to jump to that branch and filter the fleet instantly.</p>
+                </div>
+                <a href="/reservations" class="btn btn-outline-secondary">Open Reservations</a>
+            </div>
+            <div id="trinidad-branch-map"></div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

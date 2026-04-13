@@ -1,141 +1,168 @@
 {% extends "authenticated-base.html" %}
 
 {% block external_css %}
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
-{% endblock %}
+<style>
+    .home-hero {
+        background:
+            radial-gradient(circle at top right, rgba(247, 181, 0, 0.28), transparent 30%),
+            radial-gradient(circle at left center, rgba(255, 255, 255, 0.08), transparent 24%),
+            linear-gradient(135deg, rgba(177, 10, 10, 0.96), rgba(8, 8, 12, 0.98));
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.26);
+        overflow: hidden;
+    }
 
-{% block external_js %}
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-<script src="{{ url_for('static', path='js/app.js')}}"></script>
+    .home-hero::before {
+        content: "";
+        position: absolute;
+        inset: -40px auto auto -40px;
+        width: 220px;
+        height: 220px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.08);
+        filter: blur(4px);
+    }
+
+    .home-hero::after {
+        content: "";
+        position: absolute;
+        inset: auto -60px -60px auto;
+        width: 260px;
+        height: 260px;
+        border-radius: 50%;
+        background: rgba(247, 181, 0, 0.12);
+        filter: blur(10px);
+    }
+
+    .home-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        padding: 0.4rem 0.8rem;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        backdrop-filter: blur(10px);
+    }
+
+    .home-card {
+        background: rgba(255, 255, 255, 0.97);
+        border: 0;
+        box-shadow: 0 18px 45px rgba(0, 0, 0, 0.16);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .home-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 24px 55px rgba(0, 0, 0, 0.22);
+    }
+
+    .home-mini-grid .home-card h5 {
+        color: #000;
+    }
+
+    .home-icon {
+        width: 56px;
+        height: 56px;
+        border-radius: 1rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, rgba(177, 10, 10, 0.14), rgba(247, 181, 0, 0.18));
+        color: #b10a0a;
+    }
+
+    .home-mini-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1rem;
+    }
+
+    @media (max-width: 768px) {
+        .home-mini-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
 {% endblock %}
 
 {% block subpage_content %}
-<div class="container-fluid rental-app" id="content">
-
-    <!-- FILTERS -->
-    <div class="card shadow-sm mb-4">
-        <div class="card-body">
-            <div class="row g-3">
-                <div class="col-12">
-                    <label class="form-label">Search vehicles</label>
-                    <input class="form-control" id="vehicle-search" placeholder="Search by make, model, year, category">
+<div class="container-fluid py-3 home-page">
+    <div class="card home-hero text-white mb-4 position-relative">
+        <div class="card-body p-4 p-lg-5 position-relative">
+            <div class="row align-items-center g-4">
+                <div class="col-lg-7">
+                    <div class="home-pill mb-3">
+                        <span class="material-symbols-outlined" style="font-size: 1rem;">sunny</span>
+                        Welcome back, {{ user.username }}
+                    </div>
+                    <h1 class="display-5 fw-bold mb-3">FlexDrive is your launchpad.</h1>
+                    <p class="lead text-white-50 mb-4">
+                        Start here to browse vehicles, jump into your reservations, or head straight to the fleet when you are ready to book.
+                    </p>
+                    <div class="d-flex flex-wrap gap-3">
+                        <a href="/vehicles" class="btn btn-primary btn-lg px-4">Browse Vehicles</a>
+                        <a href="/reservations" class="btn btn-outline-light btn-lg px-4">My Reservations</a>
+                    </div>
                 </div>
-            </div>
-
-            <div class="row g-3 mt-1 align-items-end">
-                <div class="col-12 col-lg-4">
-                    <label class="form-label">Category</label>
-                    <select class="form-select" id="category-filter">
-                        <option value="">All categories</option>
-                    </select>
-                </div>
-                <div class="col-12 col-lg-4">
-                    <label class="form-label">Sort by</label>
-                    <select class="form-select" id="vehicle-sort">
-                        <option value="name-asc">Name (A-Z)</option>
-                        <option value="price-asc">Price (Low to High)</option>
-                        <option value="price-desc">Price (High to Low)</option>
-                        <option value="year-desc">Year (Newest)</option>
-                        <option value="year-asc">Year (Oldest)</option>
-                    </select>
-                </div>
-                <div class="col-12 col-lg-4">
-                    <label class="form-label">Location</label>
-                    <select class="form-select" id="location-filter">
-                        <option value="">All locations</option>
-                    </select>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- RESERVATIONS -->
-    <div class="card shadow-sm mb-3">
-        <div class="card-body">
-            <h5 class="card-title mb-3">My Reservations</h5>
-            <div class="table-responsive">
-                <table class="table table-striped align-middle">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Vehicle</th>
-                            <th>Pickup</th>
-                            <th>Return</th>
-                            <th>Status</th>
-                            <th>Total Cost</th>
-                        </tr>
-                    </thead>
-                    <tbody id="reservation-list"></tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <!-- VEHICLE LIST -->
-    <div class="row g-3 mb-4" id="vehicle-list"></div>
-
-    <!-- VEHICLE DETAILS MODAL -->
-    <div class="modal fade" id="vehicleDetailsModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-xl modal-dialog-scrollable">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="vehicle-modal-title">Vehicle Details</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-
-                <div class="modal-body">
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-6">
-                            <img id="vehicle-exterior-image" class="img-fluid rounded" alt="Vehicle exterior">
+                <div class="col-lg-5">
+                    <div class="home-mini-grid">
+                        <div class="home-card rounded-4 p-4">
+                            <div class="home-icon mb-3"><span class="material-symbols-outlined">directions_car</span></div>
+                            <h5 class="mb-2">Fleet Explorer</h5>
+                            <p class="text-muted mb-0">Open the vehicle catalog with sorting, searching, and the map.</p>
                         </div>
-                        <div class="col-md-6">
-                            <img id="vehicle-interior-image" class="img-fluid rounded" alt="Vehicle interior">
+                        <div class="home-card rounded-4 p-4">
+                            <div class="home-icon mb-3"><span class="material-symbols-outlined">event_available</span></div>
+                            <h5 class="mb-2">Booking Center</h5>
+                            <p class="text-muted mb-0">Check reservation status in a dedicated page.</p>
+                        </div>
+                        <div class="home-card rounded-4 p-4">
+                            <div class="home-icon mb-3"><span class="material-symbols-outlined">navigation</span></div>
+                            <h5 class="mb-2">Fast Start</h5>
+                            <p class="text-muted mb-0">One click gets you to the exact section you need.</p>
+                        </div>
+                        <div class="home-card rounded-4 p-4">
+                            <div class="home-icon mb-3"><span class="material-symbols-outlined">support_agent</span></div>
+                            <h5 class="mb-2">Direct Access</h5>
+                            <p class="text-muted mb-0">Keep your dashboard simple and focused.</p>
                         </div>
                     </div>
-
-                    <div class="mb-3" id="vehicle-description"></div>
-                    <ul class="list-group mb-4" id="vehicle-specs"></ul>
-
-                    <h6>Reviews</h6>
-                    <div id="vehicle-reviews" class="mb-3"></div>
-
-                    <form id="vehicle-review-form" class="border rounded p-3 bg-light">
-                        <input type="hidden" id="review-vehicle-id">
-
-                        <div class="row g-2 mb-2">
-                            <div class="col-md-3">
-                                <label class="form-label">Rating</label>
-                                <select id="review-rating" class="form-select" required>
-                                    <option value="5">5</option>
-                                    <option value="4">4</option>
-                                    <option value="3">3</option>
-                                    <option value="2">2</option>
-                                    <option value="1">1</option>
-                                </select>
-                            </div>
-
-                            <div class="col-md-9">
-                                <label class="form-label">Comment</label>
-                                <input id="review-comment" class="form-control" required
-                                    placeholder="Share your experience with this car">
-                            </div>
-                        </div>
-
-                        <button class="btn btn-outline-primary" type="submit">Post Review</button>
-                    </form>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- MAP MOVED TO BOTTOM -->
-    <div class="card shadow-sm mb-3">
-        <div class="card-body">
-            <h5 class="card-title mb-2">Trinidad Branch Map</h5>
-            <p class="text-muted mb-3">
-                Click any map marker to jump to that rental branch and filter available cars.
-            </p>
-            <div id="trinidad-branch-map"></div>
+    <div class="row g-3">
+        <div class="col-md-4">
+            <div class="card home-card h-100 rounded-4">
+                <div class="card-body p-4">
+                    <div class="home-icon mb-3"><span class="material-symbols-outlined">directions_car</span></div>
+                    <h5 class="card-title">Vehicles</h5>
+                    <p class="text-muted">Browse the fleet, compare options, and use the full search and filter experience.</p>
+                    <a href="/vehicles" class="btn btn-outline-primary">Open Vehicles</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card home-card h-100 rounded-4">
+                <div class="card-body p-4">
+                    <div class="home-icon mb-3"><span class="material-symbols-outlined">event_list</span></div>
+                    <h5 class="card-title">Reservations</h5>
+                    <p class="text-muted">Review pickups, returns, and costs on the dedicated reservations board.</p>
+                    <a href="/reservations" class="btn btn-outline-primary">Open Reservations</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card home-card h-100 rounded-4">
+                <div class="card-body p-4">
+                    <div class="home-icon mb-3"><span class="material-symbols-outlined">pin_drop</span></div>
+                    <h5 class="card-title">Locations</h5>
+                    <p class="text-muted">Jump into the branch map and find the nearest pickup spot when booking.</p>
+                    <a href="/vehicles" class="btn btn-outline-primary">See Map</a>
+                </div>
+            </div>
         </div>
     </div>
 

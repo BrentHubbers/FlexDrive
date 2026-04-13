@@ -19,3 +19,33 @@ async def user_home_view(
             "user": user
         }
     )
+
+
+@router.get("/vehicles", response_class=HTMLResponse)
+async def vehicles_view(
+    request: Request,
+    user: AuthDep,
+    db: SessionDep
+):
+    return templates.TemplateResponse(
+        request=request,
+        name="vehicle.html",
+        context={
+            "user": user,
+        }
+    )
+
+
+@router.get("/reservations", response_class=HTMLResponse)
+async def reservations_view(
+    request: Request,
+    user: AuthDep,
+    db: SessionDep
+):
+    return templates.TemplateResponse(
+        request=request,
+        name="reservation.html",
+        context={
+            "user": user,
+        }
+    )

@@ -261,6 +261,12 @@ async function loadMyReservations() {
     listEl.innerHTML = reservations.map(reservationRowTemplate).join("");
 }
 
+function bindReservationEvents() {
+    document.querySelector("#reservation-refresh")?.addEventListener("click", () => {
+        loadMyReservations();
+    });
+}
+
 async function reserveVehicle(vehicleId, location) {
     const fromValue = document.querySelector(`#from-${vehicleId}`)?.value;
     const toValue = document.querySelector(`#to-${vehicleId}`)?.value;
@@ -284,7 +290,7 @@ async function reserveVehicle(vehicleId, location) {
             method: "POST",
             body: JSON.stringify(payload),
         });
-        await Promise.all([loadVehicles(), loadMyReservations()]);
+        await loadVehicles();
     } catch (err) {
         alert(`Reservation failed: ${err.message}`);
     }
@@ -634,14 +640,20 @@ function bindAdminEvents() {
 }
 
 async function main() {
-    const isRentalPage = Boolean(document.querySelector("#vehicle-list"));
+    const isVehiclePage = Boolean(document.querySelector("#vehicle-list"));
+    const isReservationPage = Boolean(document.querySelector("#reservation-list"));
     const isAdminPage = Boolean(document.querySelector("#admin-stats"));
 
-    if (isRentalPage) {
+    if (isVehiclePage) {
         bindRentalEvents();
         await loadLocations();
         initializeTrinidadMap();
-        await Promise.all([loadVehicles(), loadMyReservations()]);
+        await loadVehicles();
+    }
+
+    if (isReservationPage && !isVehiclePage) {
+        bindReservationEvents();
+        await loadMyReservations();
     }
 
     if (isAdminPage) {
