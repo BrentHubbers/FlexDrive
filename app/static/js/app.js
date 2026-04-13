@@ -125,34 +125,31 @@ function initializeTrinidadMap() {
 }
 
 function vehicleCardTemplate(vehicle) {
-    const now = new Date();
-    const tomorrow = new Date(now);
-    tomorrow.setDate(now.getDate() + 1);
-    const afterTomorrow = new Date(now);
-    afterTomorrow.setDate(now.getDate() + 2);
-
     return `
         <div class="col-md-6 col-xl-4">
-            <div class="card h-100 vehicle-card shadow-sm">
+            <div class="card h-100 vehicle-card">
                 <img src="${vehicle.url_image || vehicle.exterior_image_url || ""}" class="card-img-top vehicle-thumb" alt="${vehicle.make} ${vehicle.model}">
                 <div class="card-body d-flex flex-column">
-                    <h5 class="card-title mb-1">${vehicleDisplayName(vehicle)}</h5>
-                    <p class="text-muted mb-2">${vehicle.category} - ${vehicle.location}</p>
-                    <p class="fw-semibold mb-3">${formatMoney(vehicle.price_per_day)} / day</p>
-                    <div class="mt-auto">
-                        <div class="row g-2 mb-2">
-                            <div class="col-6">
-                                <input type="date" class="form-control form-control-sm" id="from-${vehicle.id}" value="${formatDateInput(tomorrow)}">
-                            </div>
-                            <div class="col-6">
-                                <input type="date" class="form-control form-control-sm" id="to-${vehicle.id}" value="${formatDateInput(afterTomorrow)}">
-                            </div>
+                    <div class="mb-2">
+                        <h5 class="card-title mb-1">${vehicleDisplayName(vehicle)}</h5>
+                        <p class="text-muted mb-0">
+                            <span class="d-inline-block px-2 py-1 rounded" style="background: rgba(177,10,10,0.08); font-size: 0.85rem;">${vehicle.category}</span>
+                            <span class="d-inline-block px-2 py-1 rounded ms-2" style="background: rgba(247,181,0,0.12); font-size: 0.85rem;">${vehicle.location}</span>
+                        </p>
+                    </div>
+                    <div class="mb-3 d-flex align-items-end gap-2">
+                        <div>
+                            <small class="text-muted d-block" style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;">From</small>
+                            <p class="fw-semibold mb-0">${formatMoney(vehicle.price_per_day)}</p>
                         </div>
-                        <button class="btn btn-primary w-100 reserve-btn" data-vehicle-id="${vehicle.id}" data-location="${vehicle.location}">
+                        <small class="text-muted" style="font-size: 0.9rem;">per day</small>
+                    </div>
+                    <div class="mt-auto">
+                        <button class="btn btn-primary w-100 reserve-btn mb-2" data-vehicle-id="${vehicle.id}" data-location="${vehicle.location}">
                             Reserve Now
                         </button>
-                        <button class="btn btn-outline-secondary w-100 mt-2 vehicle-details-btn" data-vehicle-id="${vehicle.id}">
-                            More Details
+                        <button class="btn btn-outline-secondary w-100 vehicle-details-btn" data-vehicle-id="${vehicle.id}">
+                            View Details
                         </button>
                     </div>
                 </div>
@@ -240,14 +237,37 @@ async function ensureVehicleLookup() {
 
 function reservationRowTemplate(reservation) {
     const vehicle = rentalState.vehicleById.get(reservation.vehicle_id);
+    const driverName = reservation.driver
+        ? `${reservation.driver.first_name}${reservation.driver.last_name ? ' ' + reservation.driver.last_name : ''}`
+        : "-";
+    const driverPhone = reservation.driver ? reservation.driver.phone : "-";
+    const driverInfo = `${driverName} (${driverPhone})`;
+
+    const createdTime = new Date(reservation.created_at).getTime();
+    const nowTime = Date.now();
+    const hoursElapsed = (nowTime - createdTime) / (1000 * 60 * 60);
+    const canCancel = reservation.status === "active" && hoursElapsed < 24;
+
+    const addOns = [];
+    if (reservation.protection_plan) addOns.push("🛡️ Protection");
+    if (reservation.flexible_rebooking) addOns.push("🔄 Flexible");
+    const addOnsText = addOns.length > 0 ? addOns.join(", ") : "None";
+
+    const cancelBtn = canCancel
+        ? `<button class="btn btn-sm btn-danger" onclick="cancelReservation(${reservation.id})">Cancel</button>`
+        : "";
+
     return `
         <tr>
             <td>${reservation.id}</td>
             <td>${vehicleDisplayName(vehicle)}</td>
+            <td>${driverInfo}</td>
             <td>${new Date(reservation.date_from).toLocaleString()}</td>
             <td>${new Date(reservation.date_to).toLocaleString()}</td>
+            <td><small>${addOnsText}</small></td>
             <td>${reservation.status}</td>
             <td>${formatMoney(reservation.total_cost)}</td>
+            <td>${cancelBtn}</td>
         </tr>
     `;
 }
@@ -268,21 +288,74 @@ function bindReservationEvents() {
 }
 
 async function reserveVehicle(vehicleId, location) {
-    const fromValue = document.querySelector(`#from-${vehicleId}`)?.value;
-    const toValue = document.querySelector(`#to-${vehicleId}`)?.value;
+    document.querySelector('#rental-vehicle-id').value = vehicleId;
+    document.querySelector('#rental-pickup-location').value = location;
+    document.querySelector('#rental-return-location').value = location;
+
+    const now = new Date();
+    const tomorrow = new Date(now);
+    tomorrow.setDate(now.getDate() + 1);
+    const afterTomorrow = new Date(now);
+    afterTomorrow.setDate(now.getDate() + 2);
+
+    document.querySelector('#rental-pickup-date').value = formatDateInput(tomorrow);
+    document.querySelector('#rental-return-date').value = formatDateInput(afterTomorrow);
+
+    document.querySelector('#rental-details-form').reset();
+    document.querySelector('#rental-pickup-date').value = formatDateInput(tomorrow);
+    document.querySelector('#rental-return-date').value = formatDateInput(afterTomorrow);
+
+    const modal = bootstrap.Modal.getOrCreateInstance(document.querySelector('#rentalDetailsModal'));
+    modal.show();
+}
+
+async function submitReservationWithDriver() {
+    const vehicleId = Number(document.querySelector('#rental-vehicle-id').value);
+    const fromValue = document.querySelector('#rental-pickup-date').value;
+    const toValue = document.querySelector('#rental-return-date').value;
+    const location = document.querySelector('#rental-pickup-location').value;
+
     if (!fromValue || !toValue) {
-        alert("Please choose start and end dates.");
+        alert("Please select pickup and return dates.");
+        return;
+    }
+
+    if (toValue <= fromValue) {
+        alert("Return date must be after pickup date.");
+        return;
+    }
+
+    const driver = {
+        first_name: document.querySelector('#driver-first-name').value.trim(),
+        last_name: document.querySelector('#driver-last-name').value.trim(),
+        email: document.querySelector('#driver-email').value.trim(),
+        phone: document.querySelector('#driver-phone').value.trim(),
+        address: document.querySelector('#driver-address').value.trim(),
+        city: document.querySelector('#driver-city').value.trim(),
+        license_num: document.querySelector('#driver-license-num').value.trim(),
+        license_from: document.querySelector('#driver-license-from').value || null,
+        license_to: document.querySelector('#driver-license-to').value || null,
+    };
+
+    const hasProtectionPlan = document.querySelector('#driver-protection-plan').checked;
+    const hasFlexibleRebooking = document.querySelector('#driver-flexible-rebooking').checked;
+
+    if (!driver.first_name || !driver.phone) {
+        alert("Please enter at least First Name and Phone Number.");
         return;
     }
 
     const payload = {
-        vehicle_id: Number(vehicleId),
+        vehicle_id: vehicleId,
         date_from: `${fromValue}T10:00:00Z`,
         date_to: `${toValue}T10:00:00Z`,
         pickup_location: location,
         return_location: location,
         payment_method: "card",
         comment: "Booked from web app",
+        driver,
+        protection_plan: hasProtectionPlan,
+        flexible_rebooking: hasFlexibleRebooking,
     };
 
     try {
@@ -290,9 +363,29 @@ async function reserveVehicle(vehicleId, location) {
             method: "POST",
             body: JSON.stringify(payload),
         });
+        const modalEl = document.querySelector('#rentalDetailsModal');
+        const modalInstance = bootstrap.Modal.getInstance(modalEl);
+        if (modalInstance) modalInstance.hide();
+        alert("Reservation confirmed!");
         await loadVehicles();
     } catch (err) {
         alert(`Reservation failed: ${err.message}`);
+    }
+}
+
+async function cancelReservation(reservationId) {
+    if (!confirm("Are you sure you want to cancel this reservation? This action cannot be undone.")) {
+        return;
+    }
+
+    try {
+        await getJson(`/api/reservations/${reservationId}/cancel`, {
+            method: "PATCH",
+        });
+        alert("Reservation cancelled successfully");
+        await loadMyReservations();
+    } catch (err) {
+        alert(`Failed to cancel: ${err.message}`);
     }
 }
 
@@ -314,7 +407,6 @@ async function loadVehicleDetails(vehicleId) {
     const details = await getJson(`/api/vehicles/${vehicleId}`);
     document.querySelector("#vehicle-modal-title").textContent = `${details.year} ${details.make} ${details.model}`;
     document.querySelector("#vehicle-exterior-image").src = details.exterior_image_url || details.url_image || "";
-    document.querySelector("#vehicle-interior-image").src = details.interior_image_url || details.url_image || "";
     document.querySelector("#vehicle-description").textContent = details.description || "No description available.";
     document.querySelector("#review-vehicle-id").value = String(vehicleId);
 
@@ -364,6 +456,7 @@ function bindRentalEvents() {
     document.querySelector("#price-filter")?.addEventListener("change", applyRentalVehicleFilters);
     document.querySelector("#vehicle-sort")?.addEventListener("change", applyRentalVehicleFilters);
     document.querySelector("#vehicle-search")?.addEventListener("input", applyRentalVehicleFilters);
+    document.querySelector("#confirm-rental-btn")?.addEventListener("click", submitReservationWithDriver);
 
     document.addEventListener("click", (event) => {
         const button = event.target.closest(".reserve-btn");
@@ -415,12 +508,16 @@ async function loadAdminDashboard() {
 
 function adminReservationRowTemplate(reservation) {
     const vehicle = adminState.fleetById.get(reservation.vehicle_id);
+    const driverName = reservation.driver 
+        ? `${reservation.driver.first_name}${reservation.driver.last_name ? ' ' + reservation.driver.last_name : ''}`
+        : "-";
     return `
         <tr>
             <td>${reservation.id}</td>
             <td>${vehicleDisplayName(vehicle)}</td>
             <td>${vehicle?.license_plate || `ID-${reservation.vehicle_id}`}</td>
             <td>${reservation.user_id ?? "-"}</td>
+            <td>${driverName}</td>
             <td><input type="date" class="form-control form-control-sm" id="admin-res-start-${reservation.id}" value="${String(reservation.date_from).slice(0, 10)}"></td>
             <td><input type="date" class="form-control form-control-sm" id="admin-res-end-${reservation.id}" value="${String(reservation.date_to).slice(0, 10)}"></td>
             <td>

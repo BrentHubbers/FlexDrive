@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from sqlmodel import SQLModel
 
 
@@ -21,6 +21,19 @@ class VehicleResponse(SQLModel):
     fuel_type: str | None = None
 
 
+class DriverDetails(SQLModel):
+    first_name: str
+    last_name: str | None = None
+    email: str | None = None
+    phone: str
+    address: str | None = None
+    city: str | None = None
+    state: str | None = None
+    license_num: str | None = None
+    license_from: date | None = None
+    license_to: date | None = None
+
+
 class ReservationCreate(SQLModel):
     vehicle_id: int
     date_from: datetime
@@ -29,6 +42,9 @@ class ReservationCreate(SQLModel):
     return_location: str | None = None
     payment_method: str | None = "card"
     comment: str | None = None
+    driver: DriverDetails | None = None
+    protection_plan: bool = False
+    flexible_rebooking: bool = False
 
 
 class ReservationResponse(SQLModel):
@@ -41,6 +57,10 @@ class ReservationResponse(SQLModel):
     return_location: str
     status: str
     total_cost: float | None = None
+    protection_plan: bool = False
+    flexible_rebooking: bool = False
+    created_at: datetime | None = None
+    driver: DriverDetails | None = None
 
 
 class AdminSummary(SQLModel):

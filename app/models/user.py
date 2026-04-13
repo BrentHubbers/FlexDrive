@@ -68,6 +68,9 @@ class ReservationBase(SQLModel):
     payment_method: Optional[str] = None
     comment: Optional[str] = None
     authorized_user_id: Optional[int] = None
+    protection_plan: bool = False
+    flexible_rebooking: bool = False
+    created_at: datetime = Field(default_factory=datetime.utcnow)
 
 class Reservation(ReservationBase, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -80,7 +83,6 @@ class DriverBase(SQLModel):
     email: Optional[EmailStr] = None
     phone: str
     country: Optional[str] = None
-    zip: Optional[str] = None
     state: Optional[str] = None
     city: Optional[str] = None
     address: Optional[str] = None

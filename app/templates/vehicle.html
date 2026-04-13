@@ -32,31 +32,118 @@
     }
 
     .vehicle-toolbar {
-        background: rgba(255, 255, 255, 0.96);
-        border: 1px solid rgba(177, 10, 10, 0.08);
-        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.14);
+        background:
+            radial-gradient(circle at 100% -10%, rgba(177, 10, 10, 0.12), transparent 42%),
+            #ffffff;
+        border: 1px solid rgba(177, 10, 10, 0.2);
+        box-shadow: 0 14px 34px rgba(0, 0, 0, 0.18);
+        backdrop-filter: blur(8px);
+    }
+
+    .vehicle-toolbar .form-label {
+        color: #7d1010;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+    }
+
+    .vehicle-toolbar .form-control,
+    .vehicle-toolbar .form-select {
+        border-radius: 0.85rem;
+        border: 1px solid rgba(177, 10, 10, 0.28);
+        background: rgba(255, 255, 255, 0.95);
+        color: #1f1616;
+    }
+
+    .vehicle-toolbar .form-control:focus,
+    .vehicle-toolbar .form-select:focus {
+        border-color: rgba(177, 10, 10, 0.5);
+        box-shadow: 0 0 0 0.22rem rgba(177, 10, 10, 0.14);
+    }
+
+    .vehicle-toolbar .form-control::placeholder {
+        color: rgba(77, 31, 31, 0.55);
     }
 
     .vehicle-card {
-        border-radius: 1.1rem;
+        border-radius: 1.15rem;
         overflow: hidden;
-        border: 0;
-        box-shadow: 0 18px 45px rgba(0, 0, 0, 0.16);
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        border: 1px solid rgba(177, 10, 10, 0.2);
+        background: #ffffff;
+        box-shadow: 0 14px 34px rgba(0, 0, 0, 0.18);
+        transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
     }
 
     .vehicle-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 24px 55px rgba(0, 0, 0, 0.22);
+        transform: translateY(-6px);
+        border-color: rgba(177, 10, 10, 0.42);
+        box-shadow: 0 30px 64px rgba(0, 0, 0, 0.25);
     }
 
     .vehicle-card .card-img-top {
-        height: 250px;
+        height: 220px;
         object-fit: cover;
+        border-bottom: 1px solid rgba(177, 10, 10, 0.12);
     }
 
     .vehicle-card .card-title {
         font-size: 1.1rem;
+        color: #1f1616;
+    }
+
+    .vehicle-card .text-muted,
+    .vehicle-card small,
+    .vehicle-card p {
+        color: rgba(31, 22, 22, 0.74) !important;
+    }
+
+    .vehicle-card .fw-semibold {
+        color: #1f1616;
+    }
+
+    .reserve-btn {
+        background: linear-gradient(135deg, #ad1111 0%, #c53030 100%);
+        border-color: #ad1111;
+        color: #fff;
+    }
+
+    .reserve-btn:hover {
+        background: linear-gradient(135deg, #8f0909 0%, #ad1111 100%);
+        border-color: #8f0909;
+        color: #fff;
+    }
+
+    .vehicle-details-btn {
+        border-color: rgba(177, 10, 10, 0.3);
+        color: #b10a0a;
+        background: rgba(177, 10, 10, 0.02);
+    }
+
+    .vehicle-details-btn:hover {
+        border-color: rgba(177, 10, 10, 0.7);
+        background: rgba(177, 10, 10, 0.08);
+        color: #8f0909;
+    }
+
+    .vehicle-card .text-muted span {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.34rem 0.7rem;
+        border-radius: 999px;
+        font-size: 0.76rem;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        border: 1px solid rgba(177, 10, 10, 0.28);
+        box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.24);
+    }
+
+    .vehicle-card .text-muted span:first-child {
+        background: linear-gradient(135deg, rgba(177, 10, 10, 0.18), rgba(143, 9, 9, 0.1));
+        color: #8f0909;
+    }
+
+    .vehicle-card .text-muted span + span {
+        background: linear-gradient(135deg, rgba(177, 10, 10, 0.12), rgba(247, 181, 0, 0.14));
+        color: #7c1b1b;
     }
 
     .vehicle-badge {
@@ -79,6 +166,24 @@
     .vehicle-spec-strip {
         background: linear-gradient(135deg, rgba(247, 181, 0, 0.1), rgba(255, 255, 255, 0.04));
         border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    @media (max-width: 767.98px) {
+        .vehicle-hero .display-5 {
+            font-size: 2rem;
+        }
+
+        .vehicle-hero .lead {
+            font-size: 0.95rem;
+        }
+
+        .vehicle-toolbar .card-body {
+            padding: 1rem;
+        }
+
+        .vehicle-card .card-img-top {
+            height: 190px;
+        }
     }
 </style>
 {% endblock %}
@@ -188,11 +293,8 @@
 
                 <div class="modal-body">
                     <div class="row g-3 mb-3">
-                        <div class="col-md-6">
-                            <img id="vehicle-exterior-image" class="img-fluid rounded" alt="Vehicle exterior">
-                        </div>
-                        <div class="col-md-6">
-                            <img id="vehicle-interior-image" class="img-fluid rounded" alt="Vehicle interior">
+                        <div class="col-12">
+                            <img id="vehicle-exterior-image" class="img-fluid rounded" alt="Vehicle" style="max-height: 400px; object-fit: cover; width: 100%;">
                         </div>
                     </div>
 
@@ -226,6 +328,128 @@
 
                         <button class="btn btn-outline-primary" type="submit">Post Review</button>
                     </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- RENTAL DETAILS MODAL -->
+    <div class="modal fade" id="rentalDetailsModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Rental Details - Enter Your Information</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <div class="modal-body">
+                    <form id="rental-details-form">
+                        <input type="hidden" id="rental-vehicle-id">
+                        <input type="hidden" id="rental-pickup-date">
+                        <input type="hidden" id="rental-return-date">
+                        <input type="hidden" id="rental-pickup-location">
+                        <input type="hidden" id="rental-return-location">
+
+                        <!-- Driver Information -->
+                        <div class="section-header mb-3" style="font-size: 1.2rem; font-weight: 600;">👤 About You</div>
+                        
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">First Name</label>
+                                <input type="text" id="driver-first-name" class="form-control" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Last Name</label>
+                                <input type="text" id="driver-last-name" class="form-control" required>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label">Email</label>
+                                <input type="email" id="driver-email" class="form-control" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Phone</label>
+                                <input type="tel" id="driver-phone" class="form-control" required>
+                            </div>
+                        </div>
+
+                        <!-- Where You Reside -->
+                        <div class="section-header mb-3" style="font-size: 1.2rem; font-weight: 600;">🏠 Where You Reside</div>
+                        
+                        <div class="row g-3 mb-3">
+                            <div class="col-12">
+                                <label class="form-label">Address</label>
+                                <input type="text" id="driver-address" class="form-control" required>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-4">
+                            <div class="col-12">
+                                <label class="form-label">City / Province</label>
+                                <input type="text" id="driver-city" class="form-control" required>
+                            </div>
+                        </div>
+
+                        <!-- Driver License -->
+                        <div class="section-header mb-3" style="font-size: 1.2rem; font-weight: 600;">🪪 Driver License</div>
+                        
+                        <div class="row g-3 mb-3">
+                            <div class="col-12">
+                                <label class="form-label">License Number</label>
+                                <input type="text" id="driver-license-num" class="form-control" required>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label">License From (MM/DD/YYYY)</label>
+                                <input type="text" id="driver-license-from" class="form-control" placeholder="MM/DD/YYYY" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">License To (MM/DD/YYYY)</label>
+                                <input type="text" id="driver-license-to" class="form-control" placeholder="MM/DD/YYYY" required>
+                            </div>
+                        </div>
+
+                        <!-- Protection Plan -->
+                        <div class="card bg-light border-0 mb-3">
+                            <div class="card-body">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="driver-protection-plan" value="">
+                                    <label class="form-check-label fw-semibold" for="driver-protection-plan">
+                                        🛡️ Protection Plan - $30/day
+                                    </label>
+                                    <p class="text-muted small ms-4">Covers damage, theft & accidents</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Flexible Rebooking -->
+                        <div class="card bg-light border-0 mb-4">
+                            <div class="card-body">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="driver-flexible-rebooking" value="">
+                                    <label class="form-check-label fw-semibold" for="driver-flexible-rebooking">
+                                        🔄 Flexible Rebooking - $15 extra
+                                    </label>
+                                    <p class="text-muted small ms-4">Rebook anytime before pickup</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Cancellation Policy -->
+                        <div class="alert alert-info border-0 mb-4">
+                            <strong>Free Cancellation:</strong> Cancel for free within 24 hours of booking. After that, a cancellation fee may apply.
+                        </div>
+
+                    </form>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="confirm-rental-btn">Complete Reservation</button>
                 </div>
             </div>
         </div>

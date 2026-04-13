@@ -9,16 +9,20 @@
 <style>
     body {
         background: linear-gradient(135deg, #f2f2f2, #ad1111);
+        min-height: 100vh;
+        font-family: 'Inter', sans-serif;
     }
 
     .login-container {
         min-height: 100vh;
+        padding: 2rem 1rem;
     }
 
     .login-card {
         border: none;
-        border-radius: 1rem;
+        border-radius: 1.25rem;
         overflow: hidden;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
     }
 
     .login-image {
@@ -28,75 +32,179 @@
         justify-content: center;
         color: white;
         padding: 3rem;
+        flex-direction: column;
+    }
+
+    .flexdrive-logo {
+        max-height: 220px;
+        width: auto;
+        margin: 0;
+        display: block;
+    }
+
+    .logo-wrap {
+        height: 165px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 0.65rem;
+        overflow: hidden;
+    }
+
+    .login-image h2 {
+        font-family: 'DM Sans', sans-serif;
+        font-weight: 600;
+        font-size: 1.75rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .login-image .lead {
+        opacity: 0.9;
+        font-size: 1rem;
     }
 
     .form-section {
         padding: 3rem;
+        background: white;
     }
 
-    .btn-primary {
-        border-radius: 0.5rem;
+    .form-section h3 {
+        font-family: 'DM Sans', sans-serif;
+        font-weight: 600;
+        color: #8f0909;
+        margin-bottom: 1.5rem;
+    }
+
+    .form-label {
+        font-weight: 500;
+        color: #333;
+        font-family: 'DM Sans', sans-serif;
     }
 
     .form-control {
-        border-radius: 0.5rem;
+        border-radius: 0.75rem;
+        border: 1px solid #ddd;
+        padding: 0.75rem 1rem;
+        font-family: 'Inter', sans-serif;
+        transition: border-color 0.3s, box-shadow 0.3s;
+    }
+
+    .form-control:focus {
+        border-color: #ad1111;
+        box-shadow: 0 0 0 3px rgba(173, 17, 17, 0.1);
+        outline: none;
+    }
+
+    .btn-primary {
+        border-radius: 0.75rem;
+        background: linear-gradient(135deg, #8f0909 0%, #ad1111 100%);
+        border: none;
+        font-family: 'DM Sans', sans-serif;
+        font-weight: 600;
+        padding: 0.8rem 1.5rem;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px rgba(173, 17, 17, 0.3);
+        background: linear-gradient(135deg, #730707 0%, #8f0909 100%);
+    }
+
+    .btn-secondary {
+        border-radius: 0.75rem;
+        background: #f0f0f0;
+        color: #333;
+        border: none;
+        font-family: 'DM Sans', sans-serif;
+        font-weight: 600;
+        padding: 0.8rem 1.5rem;
+    }
+
+    .btn-secondary:hover {
+        background: #e0e0e0;
+        color: #333;
+    }
+
+    .alert {
+        border-radius: 0.75rem;
+        border: none;
+        margin-top: 1rem;
+    }
+
+    @media (max-width: 992px) {
+        .login-card {
+            margin: auto;
+        }
+
+        .form-section {
+            padding: 2rem;
+        }
+
+        .flexdrive-logo {
+            max-height: 165px;
+        }
+
+        .logo-wrap {
+            height: 140px;
+            margin-bottom: 0.5rem;
+        }
     }
 </style>
 {% endblock %}
 
-
 {% block content %}
-
 <div class="container login-container d-flex align-items-center justify-content-center">
-    <div class="card shadow-lg login-card col-lg-10">
+    <div class="card login-card" style="max-width: 900px; width: 100%;">
         <div class="row g-0">
-            <div class="col-lg-6 d-none d-lg-flex login-image">
-                <div class="text-center">
-                    <h2 class="mt-4 fw-bold">Registration</h2>
-                    <p class="lead">Create an account now</p>
+            <div class="col-lg-5 d-none d-lg-flex login-image">
+                <div class="text-center w-100">
+                    <div class="logo-wrap">
+                        <img src="{{ url_for('static', path='img/logo.svg') }}" alt="FlexDrive" class="flexdrive-logo">
+                    </div>
+                    <h2>Join Us Today</h2>
+                    <p class="lead">Start your rental adventure</p>
+                    <p style="margin-top: 2rem; opacity: 0.85; font-size: 0.95rem;">Quick and easy registration to book your perfect Trinidad rental car</p>
                 </div>
             </div>
-            <div class="col-lg-6 bg-white">
+            <div class="col-lg-7">
                 <div class="form-section">
-                    <h3 class="fw-bold mb-4">Register</h3>
+                    <h3>Create Your FlexDrive Account</h3>
 
                     <form id="signUpForm" method="POST">
                         <div class="mb-3">
                             <label for="username" class="form-label">Username</label>
-                            <input type="text" class="form-control form-control-md" id="username" name="username"
-                                required="required">
+                            <input type="text" class="form-control" id="username" name="username" placeholder="Choose a username" required="required">
                         </div>
                         <div class="mb-3">
-                            <label for="username" class="form-label">Email</label>
-                            <input type="email" class="form-control form-control-md" id="email" name="email"
-                                required="required">
+                            <label for="email" class="form-label">Email Address</label>
+                            <input type="email" class="form-control" id="email" name="email" placeholder="your@email.com" required="required">
                         </div>
 
                         <div class="mb-3">
                             <label for="password" class="form-label">Password</label>
-                            <input type="password" class="form-control form-control-md" id="password" name="password"
-                                required>
+                            <input type="password" class="form-control" id="password" name="password" placeholder="Create a strong password" required>
                         </div>
 
-                        <div class="d-grid mb-3">
+                        <div class="d-grid mb-2">
                             <button type="submit" class="btn btn-primary btn-lg">
-                                Register
+                                Create Account
                             </button>
                         </div>
 
-                        <div class="d-grid mb-3">
-                            <a class="btn btn-secondary btn-lg" href="{{url_for('login_view')}}" role="button">
-                                Back to Login
+                        <div class="text-center mb-3">
+                            <p style="color: #666; margin: 1rem 0; font-size: 0.95rem;">Already have an account?</p>
+                            <a class="btn btn-secondary btn-lg w-100" href="{{url_for('login_view')}}" role="button">
+                                Sign In
                             </a>
                         </div>
+
                         {% for message in get_flashed_messages(request) %}
                         <div class="alert alert-{{ message.type }}" role="alert">{{ message.message }}</div>
                         {% endfor %}
                     </form>
-
                 </div>
             </div>
-
         </div>
     </div>
 </div>

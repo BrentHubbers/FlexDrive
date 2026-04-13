@@ -1,25 +1,239 @@
+:root {
+	--font-heading: 'DM Sans', sans-serif;
+	--font-body: 'Inter', sans-serif;
+}
+
+body {
+	font-family: var(--font-body);
+	font-weight: 400;
+	letter-spacing: 0.2px;
+}
+
+html,
+body {
+	font-size: 14px;
+}
+
+@media (min-width: 768px) {
+	html,
+	body {
+		font-size: 16px;
+	}
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+	font-family: var(--font-heading);
+	font-weight: 700;
+	letter-spacing: -0.5px;
+}
+
+.display-5,
+.display-6 {
+	font-family: var(--font-heading);
+	font-weight: 700;
+	letter-spacing: -0.8px;
+	font-size: 1.8rem;
+}
+
+@media (min-width: 768px) {
+	.display-5,
+	.display-6 {
+		font-size: 2.5rem;
+	}
+}
+
+@media (min-width: 1200px) {
+	.display-5,
+	.display-6 {
+		font-size: 3rem;
+	}
+}
+
+.lead {
+	font-family: var(--font-body);
+	font-weight: 400;
+	letter-spacing: 0.3px;
+	line-height: 1.7;
+	font-size: 0.95rem;
+}
+
+@media (min-width: 768px) {
+	.lead {
+		font-size: 1.1rem;
+	}
+}
+
+.btn {
+	font-family: var(--font-heading);
+	font-weight: 600;
+	letter-spacing: 0.5px;
+	text-transform: uppercase;
+	font-size: 0.75rem;
+	padding: 0.6rem 1.2rem;
+}
+
+@media (min-width: 768px) {
+	.btn {
+		font-size: 0.85rem;
+		padding: 0.75rem 1.5rem;
+	}
+}
+
+.btn-lg {
+	padding: 0.7rem 1.5rem !important;
+	font-size: 0.8rem;
+}
+
+@media (min-width: 768px) {
+	.btn-lg {
+		padding: 0.875rem 2rem !important;
+		font-size: 0.95rem;
+	}
+}
+
+.card-title {
+	font-family: var(--font-heading);
+	font-weight: 700;
+	letter-spacing: -0.3px;
+	font-size: 1rem;
+}
+
+@media (min-width: 768px) {
+	.card-title {
+		font-size: 1.1rem;
+	}
+}
+
+.form-label,
+label {
+	font-family: var(--font-body);
+	font-weight: 600;
+	letter-spacing: 0.3px;
+	font-size: 0.8rem;
+	text-transform: uppercase;
+}
+
+@media (min-width: 768px) {
+	.form-label,
+	label {
+		font-size: 0.9rem;
+	}
+}
+
+.form-control,
+.form-select {
+	font-family: var(--font-body);
+	font-weight: 500;
+	font-size: 0.9rem;
+}
+
+@media (min-width: 768px) {
+	.form-control,
+	.form-select {
+		font-size: 1rem;
+	}
+}
+
+.form-control-sm {
+	font-size: 0.8rem;
+}
+
+.small,
+small {
+	font-family: var(--font-body);
+	font-weight: 500;
+	letter-spacing: 0.2px;
+	font-size: 0.75rem;
+}
+
+@media (min-width: 768px) {
+	.small,
+	small {
+		font-size: 0.85rem;
+	}
+}
+
+.text-muted {
+	font-family: var(--font-body);
+	font-weight: 400;
+	font-size: 0.9rem;
+}
+
+@media (min-width: 768px) {
+	.text-muted {
+		font-size: 0.95rem;
+	}
+}
+
+.fw-semibold {
+	font-family: var(--font-heading);
+	font-weight: 700;
+}
+
+.card-body {
+	font-family: var(--font-body);
+	padding: 1rem;
+}
+
+@media (min-width: 768px) {
+	.card-body {
+		padding: 1.5rem;
+	}
+}
+
+@media (min-width: 1024px) {
+	.card-body {
+		padding: 2rem;
+	}
+}
+
 .rental-app .vehicle-card {
 	border-radius: 0.8rem;
 }
 
 #trinidad-branch-map {
-	height: 360px;
+	height: 300px;
 	width: 100%;
 	border-radius: 0.75rem;
 }
 
+@media (min-width: 768px) {
+	#trinidad-branch-map {
+		height: 360px;
+	}
+}
+
 .rental-app .vehicle-thumb {
-	height: 300px;
+	height: 200px;
 	object-fit: cover;
 }
 
+@media (min-width: 768px) {
+	.rental-app .vehicle-thumb {
+		height: 280px;
+	}
+}
+
 .rental-app .card-title {
-	font-size: 1.05rem;
+	font-size: 1rem;
+	font-family: var(--font-heading);
+}
+
+@media (min-width: 768px) {
+	.rental-app .card-title {
+		font-size: 1.1rem;
+	}
 }
 
 .rental-app .form-control,
 .rental-app .form-select {
 	border-radius: 0.6rem;
+	font-family: var(--font-body);
 }
 
 #vehicle-reviews {
