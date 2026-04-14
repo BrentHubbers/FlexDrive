@@ -10,7 +10,7 @@ COPY ./app /app
 
 RUN pip install .
 
-WORKDIR /app
+WORKDIR /
 
 ENTRYPOINT []
 
