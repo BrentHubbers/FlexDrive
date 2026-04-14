@@ -12,6 +12,7 @@ RUN pip install .
 
 WORKDIR /app
 
-ENTRYPOINT ["python"]
+ENTRYPOINT []
 
-CMD ["-m", "app.main"]
+CMD ["fastapi", "run", "--host", "0.0.0.0", "--port", "10000"]
+
