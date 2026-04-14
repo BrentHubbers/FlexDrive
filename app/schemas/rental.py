@@ -30,6 +30,7 @@ class DriverDetails(SQLModel):
     city: str | None = None
     state: str | None = None
     license_num: str | None = None
+    license_expiry_date: date | None = None
     license_from: date | None = None
     license_to: date | None = None
 

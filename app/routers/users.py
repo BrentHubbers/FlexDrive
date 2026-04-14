@@ -41,6 +41,7 @@ def _to_reservation_response(reservation: Reservation, driver_repo: DriverReposi
                 city=driver_obj.city,
                 state=driver_obj.state,
                 license_num=driver_obj.license_num,
+                license_expiry_date=driver_obj.license_to,
                 license_from=driver_obj.license_from,
                 license_to=driver_obj.license_to,
             )
@@ -239,6 +240,7 @@ async def create_reservation(payload: ReservationCreate, db: SessionDep, user: A
 
     # Create driver record if driver details are provided
     if payload.driver and created.id:
+        license_expiry_date = payload.driver.license_expiry_date or payload.driver.license_to
         driver = Driver(
             first_name=payload.driver.first_name,
             last_name=payload.driver.last_name,
@@ -249,7 +251,7 @@ async def create_reservation(payload: ReservationCreate, db: SessionDep, user: A
             state=payload.driver.state,
             license_num=payload.driver.license_num,
             license_from=payload.driver.license_from,
-            license_to=payload.driver.license_to,
+            license_to=license_expiry_date,
             reservation_id=created.id,
         )
         driver_repo.create(driver)

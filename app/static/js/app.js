@@ -37,6 +37,20 @@ function formatDateInput(date) {
     return `${yyyy}-${mm}-${dd}`;
 }
 
+function syncReturnDateConstraints() {
+    const pickupDateEl = document.querySelector('#rental-pickup-date');
+    const returnDateEl = document.querySelector('#rental-return-date');
+    if (!pickupDateEl || !returnDateEl || !pickupDateEl.value) return;
+
+    returnDateEl.min = pickupDateEl.value;
+
+    if (returnDateEl.value && returnDateEl.value <= pickupDateEl.value) {
+        const nextDay = new Date(`${pickupDateEl.value}T00:00:00`);
+        nextDay.setDate(nextDay.getDate() + 1);
+        returnDateEl.value = formatDateInput(nextDay);
+    }
+}
+
 const rentalState = {
     allVehicles: [],
     vehicleById: new Map(),
@@ -298,12 +312,11 @@ async function reserveVehicle(vehicleId, location) {
     const afterTomorrow = new Date(now);
     afterTomorrow.setDate(now.getDate() + 2);
 
-    document.querySelector('#rental-pickup-date').value = formatDateInput(tomorrow);
-    document.querySelector('#rental-return-date').value = formatDateInput(afterTomorrow);
-
     document.querySelector('#rental-details-form').reset();
     document.querySelector('#rental-pickup-date').value = formatDateInput(tomorrow);
     document.querySelector('#rental-return-date').value = formatDateInput(afterTomorrow);
+    document.querySelector('#rental-pickup-date').min = formatDateInput(now);
+    syncReturnDateConstraints();
 
     const modal = bootstrap.Modal.getOrCreateInstance(document.querySelector('#rentalDetailsModal'));
     modal.show();
@@ -333,8 +346,7 @@ async function submitReservationWithDriver() {
         address: document.querySelector('#driver-address').value.trim(),
         city: document.querySelector('#driver-city').value.trim(),
         license_num: document.querySelector('#driver-license-num').value.trim(),
-        license_from: document.querySelector('#driver-license-from').value || null,
-        license_to: document.querySelector('#driver-license-to').value || null,
+        license_expiry_date: document.querySelector('#driver-license-expiry-date').value || null,
     };
 
     const hasProtectionPlan = document.querySelector('#driver-protection-plan').checked;
@@ -457,6 +469,7 @@ function bindRentalEvents() {
     document.querySelector("#vehicle-sort")?.addEventListener("change", applyRentalVehicleFilters);
     document.querySelector("#vehicle-search")?.addEventListener("input", applyRentalVehicleFilters);
     document.querySelector("#confirm-rental-btn")?.addEventListener("click", submitReservationWithDriver);
+    document.querySelector("#rental-pickup-date")?.addEventListener("change", syncReturnDateConstraints);
 
     document.addEventListener("click", (event) => {
         const button = event.target.closest(".reserve-btn");

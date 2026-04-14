@@ -345,10 +345,22 @@
                 <div class="modal-body">
                     <form id="rental-details-form">
                         <input type="hidden" id="rental-vehicle-id">
-                        <input type="hidden" id="rental-pickup-date">
-                        <input type="hidden" id="rental-return-date">
                         <input type="hidden" id="rental-pickup-location">
                         <input type="hidden" id="rental-return-location">
+
+                        <!-- Reservation Dates -->
+                        <div class="section-header mb-3" style="font-size: 1.2rem; font-weight: 600;">📅 Reservation Dates</div>
+
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label" for="rental-pickup-date">Date Collected</label>
+                                <input type="date" id="rental-pickup-date" class="form-control" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="rental-return-date">Date Returned</label>
+                                <input type="date" id="rental-return-date" class="form-control" required>
+                            </div>
+                        </div>
 
                         <!-- Driver Information -->
                         <div class="section-header mb-3" style="font-size: 1.2rem; font-weight: 600;">👤 About You</div>
@@ -404,12 +416,8 @@
 
                         <div class="row g-3 mb-4">
                             <div class="col-md-6">
-                                <label class="form-label">License From (MM/DD/YYYY)</label>
-                                <input type="text" id="driver-license-from" class="form-control" placeholder="MM/DD/YYYY" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">License To (MM/DD/YYYY)</label>
-                                <input type="text" id="driver-license-to" class="form-control" placeholder="MM/DD/YYYY" required>
+                                <label class="form-label" for="driver-license-expiry-date">License Expiring Date</label>
+                                <input type="date" id="driver-license-expiry-date" class="form-control" required>
                             </div>
                         </div>
 
@@ -442,6 +450,11 @@
                         <!-- Cancellation Policy -->
                         <div class="alert alert-info border-0 mb-4">
                             <strong>Free Cancellation:</strong> Cancel for free within 24 hours of booking. After that, a cancellation fee may apply.
+                        </div>
+
+                        <!-- Vehicle Image Disclaimer -->
+                        <div class="alert alert-secondary border-0 mb-0">
+                            <strong>Vehicle Image Notice:</strong> Photos are for illustration purposes only. You will receive the selected vehicle model or an equivalent specification, but the exact unit, color, or trim shown may vary.
                         </div>
 
                     </form>
