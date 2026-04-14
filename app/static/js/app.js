@@ -228,6 +228,64 @@ function vehicleDisplayName(vehicle) {
     return `${vehicle.make} ${vehicle.model} (${vehicle.year})`;
 }
 
+function setVehicleDetailsFeedback(message, type = "danger") {
+    const feedback = document.querySelector("#vehicle-details-feedback");
+    if (!feedback) return;
+
+    feedback.className = `alert alert-${type}`;
+    feedback.textContent = message;
+    feedback.classList.remove("d-none");
+}
+
+function clearVehicleDetailsFeedback() {
+    const feedback = document.querySelector("#vehicle-details-feedback");
+    if (!feedback) return;
+
+    feedback.textContent = "";
+    feedback.className = "alert d-none";
+}
+
+function setVehicleDetailsLoading(isLoading) {
+    const title = document.querySelector("#vehicle-modal-title");
+    const image = document.querySelector("#vehicle-exterior-image");
+    const interiorImage = document.querySelector("#vehicle-interior-image");
+    const interiorWrap = document.querySelector("#vehicle-interior-image-wrap");
+    const description = document.querySelector("#vehicle-description");
+    const specs = document.querySelector("#vehicle-specs");
+    const reviews = document.querySelector("#vehicle-reviews");
+
+    if (isLoading) {
+        if (title) title.textContent = "Loading vehicle details...";
+        if (image) {
+            image.removeAttribute("src");
+            image.alt = "Loading vehicle details";
+        }
+        if (interiorImage) {
+            interiorImage.removeAttribute("src");
+            interiorImage.alt = "Loading vehicle details";
+        }
+        if (interiorWrap) {
+            interiorWrap.classList.add("d-none");
+        }
+        if (description) description.textContent = "Loading details...";
+        if (specs) specs.innerHTML = "<li class='list-group-item text-muted'>Loading specs...</li>";
+        if (reviews) reviews.innerHTML = "<p class='text-muted mb-0'>Loading reviews...</p>";
+        return;
+    }
+
+    if (image) image.alt = "Vehicle";
+    if (interiorImage) interiorImage.alt = "Vehicle";
+}
+
+function normalizeImageUrl(url) {
+    return String(url || "").trim();
+}
+
+function isDuplicateVehicleImage(exteriorUrl, interiorUrl) {
+    if (!exteriorUrl || !interiorUrl) return false;
+    return normalizeImageUrl(exteriorUrl) === normalizeImageUrl(interiorUrl);
+}
+
 function toComparable(value) {
     if (typeof value === "boolean") return value ? 1 : 0;
     if (typeof value === "number") return value;
@@ -636,33 +694,68 @@ function reviewItemTemplate(review) {
 }
 
 async function loadVehicleDetails(vehicleId) {
-    const details = await getJson(`/api/vehicles/${vehicleId}`);
-    document.querySelector("#vehicle-modal-title").textContent = `${details.year} ${details.make} ${details.model}`;
-    document.querySelector("#vehicle-exterior-image").src = details.exterior_image_url || details.url_image || "";
-    document.querySelector("#vehicle-description").textContent = details.description || "No description available.";
-    document.querySelector("#review-vehicle-id").value = String(vehicleId);
-
-    const specs = [
-        `Category: ${details.category}`,
-        `Location: ${details.location}`,
-        `Price/Day: ${formatMoney(details.price_per_day)}`,
-        `Seats: ${details.seats || "N/A"}`,
-        `Transmission: ${details.transmission || "N/A"}`,
-        `Fuel Type: ${details.fuel_type || "N/A"}`,
-    ];
-    document.querySelector("#vehicle-specs").innerHTML = specs
-        .map((item) => `<li class="list-group-item">${item}</li>`)
-        .join("");
-
-    const reviews = details.reviews || [];
-    const reviewsEl = document.querySelector("#vehicle-reviews");
-    reviewsEl.innerHTML = reviews.length
-        ? reviews.map(reviewItemTemplate).join("")
-        : "<p class='text-muted'>No reviews yet.</p>";
-
     const modalEl = document.querySelector("#vehicleDetailsModal");
     const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
     modal.show();
+
+    clearVehicleDetailsFeedback();
+    setVehicleDetailsLoading(true);
+
+    try {
+        const details = await getJson(`/api/vehicles/${vehicleId}`);
+        document.querySelector("#vehicle-modal-title").textContent = `${details.year} ${details.make} ${details.model}`;
+        const exteriorImageUrl = details.exterior_image_url || details.url_image || "";
+        const interiorImageUrl = details.interior_image_url || "";
+        const exteriorImage = document.querySelector("#vehicle-exterior-image");
+        const interiorImage = document.querySelector("#vehicle-interior-image");
+        const interiorWrap = document.querySelector("#vehicle-interior-image-wrap");
+
+        if (exteriorImage) {
+            exteriorImage.src = exteriorImageUrl;
+            exteriorImage.alt = `${details.make} ${details.model} exterior view`;
+        }
+
+        if (interiorImage && interiorWrap) {
+            const shouldShowInterior = interiorImageUrl && !isDuplicateVehicleImage(exteriorImageUrl, interiorImageUrl);
+            if (shouldShowInterior) {
+                interiorImage.src = interiorImageUrl;
+                interiorImage.alt = `${details.make} ${details.model} interior view`;
+                interiorWrap.classList.remove("d-none");
+            } else {
+                interiorImage.removeAttribute("src");
+                interiorWrap.classList.add("d-none");
+            }
+        }
+
+        document.querySelector("#vehicle-description").textContent = details.description || "No description available.";
+        document.querySelector("#review-vehicle-id").value = String(vehicleId);
+
+        const specs = [
+            `Category: ${details.category}`,
+            `Location: ${details.location}`,
+            `Price/Day: ${formatMoney(details.price_per_day)}`,
+            `Seats: ${details.seats || "N/A"}`,
+            `Transmission: ${details.transmission || "N/A"}`,
+            `Fuel Type: ${details.fuel_type || "N/A"}`,
+        ];
+        document.querySelector("#vehicle-specs").innerHTML = specs
+            .map((item) => `<li class="list-group-item">${item}</li>`)
+            .join("");
+
+        const reviews = details.reviews || [];
+        const reviewsEl = document.querySelector("#vehicle-reviews");
+        reviewsEl.innerHTML = reviews.length
+            ? reviews.map(reviewItemTemplate).join("")
+            : "<p class='text-muted'>No reviews yet.</p>";
+    } catch (err) {
+        document.querySelector("#vehicle-modal-title").textContent = "Vehicle Details";
+        document.querySelector("#vehicle-description").textContent = "";
+        document.querySelector("#vehicle-specs").innerHTML = "";
+        document.querySelector("#vehicle-reviews").innerHTML = "";
+        setVehicleDetailsFeedback(err.message || "Unable to load vehicle details.", "danger");
+    } finally {
+        setVehicleDetailsLoading(false);
+    }
 }
 
 async function postVehicleReview(event) {
@@ -726,7 +819,9 @@ function bindRentalEvents() {
 
         const detailsBtn = event.target.closest(".vehicle-details-btn");
         if (detailsBtn) {
-            loadVehicleDetails(detailsBtn.dataset.vehicleId);
+            loadVehicleDetails(detailsBtn.dataset.vehicleId).catch((err) => {
+                setVehicleDetailsFeedback(err.message || "Unable to load vehicle details.", "danger");
+            });
         }
     });
 

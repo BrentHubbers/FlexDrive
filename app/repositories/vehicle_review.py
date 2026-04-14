@@ -1,6 +1,6 @@
 import logging
-from typing import Optional
 
+from sqlalchemy import inspect, text
 from sqlmodel import Session, func, select
 
 from app.models.user import VehicleReview, VehicleReviewBase
@@ -12,6 +12,35 @@ logger = logging.getLogger(__name__)
 class VehicleReviewRepository:
     def __init__(self, db: Session):
         self.db = db
+        self._ensure_moderation_columns()
+
+    def _ensure_moderation_columns(self) -> None:
+        bind = self.db.get_bind()
+        if bind is None:
+            return
+
+        inspector = inspect(bind)
+        if not inspector.has_table(VehicleReview.__tablename__):
+            return
+
+        existing_columns = {column["name"] for column in inspector.get_columns(VehicleReview.__tablename__)}
+        missing_columns = [column for column in ("pinned", "hidden") if column not in existing_columns]
+        if not missing_columns:
+            return
+
+        statements = []
+        if "pinned" in missing_columns:
+            statements.append(
+                f"ALTER TABLE {VehicleReview.__tablename__} ADD COLUMN IF NOT EXISTS pinned BOOLEAN NOT NULL DEFAULT false"
+            )
+        if "hidden" in missing_columns:
+            statements.append(
+                f"ALTER TABLE {VehicleReview.__tablename__} ADD COLUMN IF NOT EXISTS hidden BOOLEAN NOT NULL DEFAULT false"
+            )
+
+        for statement in statements:
+            self.db.execute(text(statement))
+        self.db.commit()
 
     def create(self, vehicle_id: int, review_data: VehicleReviewBase, user_id: int | None = None) -> VehicleReview:
         try:

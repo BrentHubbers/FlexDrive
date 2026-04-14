@@ -314,9 +314,13 @@
                 </div>
 
                 <div class="modal-body">
-                    <div class="row g-3 mb-3">
-                        <div class="col-12">
-                            <img id="vehicle-exterior-image" class="img-fluid rounded" alt="Vehicle" style="max-height: 400px; object-fit: cover; width: 100%;">
+                    <div id="vehicle-details-feedback" class="alert d-none" role="alert"></div>
+                    <div class="row g-3 mb-3" id="vehicle-image-row">
+                        <div class="col-12 col-lg-6">
+                            <img id="vehicle-exterior-image" class="img-fluid rounded" alt="Exterior vehicle view" style="max-height: 400px; object-fit: cover; width: 100%;">
+                        </div>
+                        <div class="col-12 col-lg-6 d-none" id="vehicle-interior-image-wrap">
+                            <img id="vehicle-interior-image" class="img-fluid rounded" alt="Interior vehicle view" style="max-height: 400px; object-fit: cover; width: 100%;">
                         </div>
                     </div>
 
