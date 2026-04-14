@@ -6,13 +6,12 @@ RUN apt-get update \
 
 COPY ./pyproject.toml ./
 COPY ./README.md ./
-COPY ./app ./app
+COPY ./app /app
 
 RUN pip install .
 
-WORKDIR /
+WORKDIR /app
 
-ENTRYPOINT []
+ENTRYPOINT ["python"]
 
-CMD ["fastapi", "run", "--host", "0.0.0.0", "--port", "10000"]
-
+CMD ["-m", "app.main"]
