@@ -10,7 +10,10 @@ from contextlib import asynccontextmanager
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     from app.database import create_db_and_tables
+    from app.cli import init_db
+
     create_db_and_tables()
+    init_db()
     yield
 
 
