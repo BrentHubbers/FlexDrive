@@ -78,20 +78,105 @@
         gap: 1rem;
     }
 
+    .home-slideshow-media {
+        position: relative;
+        min-height: 440px;
+        background: rgba(0, 0, 0, 0.08);
+    }
+
+    .home-slideshow-media img {
+        width: 100%;
+        height: 440px;
+        object-fit: cover;
+        display: block;
+    }
+
+    .home-slideshow-overlay {
+        position: absolute;
+        inset: 0;
+        z-index: 2;
+        display: flex;
+        align-items: center;
+        padding: 2.25rem;
+        background: linear-gradient(100deg, rgba(8, 8, 12, 0.76) 0%, rgba(8, 8, 12, 0.52) 45%, rgba(8, 8, 12, 0.2) 100%);
+        pointer-events: none;
+    }
+
+    .home-slideshow-overlay > div {
+        max-width: 720px;
+        pointer-events: auto;
+    }
+
+    .home-slideshow-caption {
+        position: absolute;
+        inset: auto 0 0 0;
+        padding: 0.95rem 1rem;
+        background: linear-gradient(180deg, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.74));
+        color: #fff;
+    }
+
+    .home-slideshow-title {
+        font-weight: 700;
+        font-size: 1rem;
+        margin: 0;
+    }
+
+    .home-slideshow-subtitle {
+        margin: 0;
+        font-size: 0.86rem;
+        opacity: 0.86;
+    }
+
+    .home-slideshow-empty {
+        min-height: 440px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1.2rem;
+        text-align: center;
+        color: #6c757d;
+    }
+
+    .home-carousel-control {
+        width: 10%;
+    }
+
+    .home-carousel-control-icon {
+        background-color: rgba(0, 0, 0, 0.55);
+        border-radius: 999px;
+        width: 2.3rem;
+        height: 2.3rem;
+    }
+
     @media (max-width: 768px) {
         .home-mini-grid {
             grid-template-columns: 1fr;
+        }
+
+        .home-slideshow-media img,
+        .home-slideshow-empty,
+        .home-slideshow-media {
+            min-height: 300px;
+            height: 300px;
+        }
+
+        .home-slideshow-overlay {
+            padding: 1.2rem;
         }
     }
 </style>
 {% endblock %}
 
+{% block subpage_scripts %}
+<script src="{{ url_for('static', path='js/app.js')}}"></script>
+{% endblock %}
+
 {% block subpage_content %}
 <div class="container-fluid py-3 home-page">
     <div class="card home-hero text-white mb-4 position-relative">
-        <div class="card-body p-4 p-lg-5 position-relative">
-            <div class="row align-items-center g-4">
-                <div class="col-lg-7">
+        <div class="position-relative">
+            <div class="home-slideshow-overlay">
+                <div>
                     <div class="home-pill mb-3">
                         <span class="material-symbols-outlined" style="font-size: 1rem;">cloudy</span>
                         Welcome back, {{ user.username }}
@@ -105,30 +190,22 @@
                         <a href="/reservations" class="btn btn-outline-light btn-lg px-4">My Reservations</a>
                     </div>
                 </div>
-                <div class="col-lg-5">
-                    <div class="home-mini-grid">
-                        <div class="home-card rounded-4 p-4">
-                            <div class="home-icon mb-3"><span class="material-symbols-outlined">directions_car</span></div>
-                            <h5 class="mb-2">Fleet Explorer</h5>
-                            <p class="text-muted mb-0">Explore the vehicle catalog using search, sorting filters, or the location map.</p>
-                        </div>
-                        <div class="home-card rounded-4 p-4">
-                            <div class="home-icon mb-3"><span class="material-symbols-outlined">event_available</span></div>
-                            <h5 class="mb-2">Booking Center</h5>
-                            <p class="text-muted mb-0">Check reservation status in a dedicated page.</p>
-                        </div>
-                        <div class="home-card rounded-4 p-4">
-                            <div class="home-icon mb-3"><span class="material-symbols-outlined">navigation</span></div>
-                            <h5 class="mb-2">Fast Start</h5>
-                            <p class="text-muted mb-0">One click gets you to the exact section you need.</p>
-                        </div>
-                        <div class="home-card rounded-4 p-4">
-                            <div class="home-icon mb-3"><span class="material-symbols-outlined">support_agent</span></div>
-                            <h5 class="mb-2">Direct Access</h5>
-                            <p class="text-muted mb-0">Keep your dashboard simple and focused.</p>
+            </div>
+            <div id="home-available-carousel" class="carousel slide" data-bs-ride="carousel" data-bs-interval="4500">
+                <div class="carousel-indicators" id="home-available-carousel-indicators"></div>
+                <div class="carousel-inner" id="home-available-carousel-inner">
+                    <div class="carousel-item active">
+                        <div class="home-slideshow-empty">
+                            Loading available vehicles...
                         </div>
                     </div>
                 </div>
+                <button class="carousel-control-prev home-carousel-control" type="button" data-bs-target="#home-available-carousel" data-bs-slide="prev" aria-label="Previous slide">
+                    <span class="carousel-control-prev-icon home-carousel-control-icon" aria-hidden="true"></span>
+                </button>
+                <button class="carousel-control-next home-carousel-control" type="button" data-bs-target="#home-available-carousel" data-bs-slide="next" aria-label="Next slide">
+                    <span class="carousel-control-next-icon home-carousel-control-icon" aria-hidden="true"></span>
+                </button>
             </div>
         </div>
     </div>

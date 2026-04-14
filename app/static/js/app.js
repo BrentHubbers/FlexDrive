@@ -411,6 +411,86 @@ function sortVehicles(vehicles, sortBy) {
     return sorted;
 }
 
+function getVehicleSlideImage(vehicle) {
+    const candidates = [
+        vehicle.exterior_image_url,
+        vehicle.url_image,
+        vehicle.interior_image_url,
+    ]
+        .map((value) => String(value || "").trim())
+        .filter(Boolean);
+
+    return candidates[0] || "https://via.placeholder.com/1200x800?text=Vehicle+Image";
+}
+
+function homeVehicleSlideTemplate(vehicle) {
+    const imageUrl = getVehicleSlideImage(vehicle);
+    const subtitle = `${vehicle.category} • ${vehicle.location} • ${formatMoney(vehicle.price_per_day)}/day`;
+    return `
+        <div class="home-slideshow-media">
+            <img src="${imageUrl}" alt="${vehicle.make} ${vehicle.model}" onerror="this.onerror=null;this.src='https://via.placeholder.com/1200x800?text=Vehicle+Image';">
+            <div class="home-slideshow-caption">
+                <p class="home-slideshow-title">${vehicle.make} ${vehicle.model} (${vehicle.year})</p>
+                <p class="home-slideshow-subtitle">${subtitle}</p>
+            </div>
+        </div>
+    `;
+}
+
+function homeVehicleIndicatorTemplate(index, isActive) {
+    return `
+        <button type="button" data-bs-target="#home-available-carousel" data-bs-slide-to="${index}" class="${isActive ? "active" : ""}" ${isActive ? "aria-current='true'" : ""} aria-label="Slide ${index + 1}"></button>
+    `;
+}
+
+async function loadHomeVehicleSlideshow() {
+    const carouselEl = document.querySelector("#home-available-carousel");
+    const innerEl = document.querySelector("#home-available-carousel-inner");
+    const indicatorsEl = document.querySelector("#home-available-carousel-indicators");
+    if (!carouselEl || !innerEl || !indicatorsEl) return;
+
+    try {
+        const vehicles = await getJson("/api/vehicles?available_only=true");
+        const featured = vehicles.slice(0, 8);
+
+        if (featured.length === 0) {
+            innerEl.innerHTML = `
+                <div class="carousel-item active">
+                    <div class="home-slideshow-empty">No vehicles are currently available. Check back soon.</div>
+                </div>
+            `;
+            indicatorsEl.innerHTML = "";
+            bootstrap.Carousel.getOrCreateInstance(carouselEl).pause();
+            return;
+        }
+
+        innerEl.innerHTML = featured
+            .map((vehicle, index) => `
+                <div class="carousel-item ${index === 0 ? "active" : ""}">
+                    ${homeVehicleSlideTemplate(vehicle)}
+                </div>
+            `)
+            .join("");
+
+        indicatorsEl.innerHTML = featured
+            .map((_, index) => homeVehicleIndicatorTemplate(index, index === 0))
+            .join("");
+
+        if (featured.length > 1) {
+            bootstrap.Carousel.getOrCreateInstance(carouselEl).cycle();
+        } else {
+            bootstrap.Carousel.getOrCreateInstance(carouselEl).pause();
+        }
+    } catch (err) {
+        innerEl.innerHTML = `
+            <div class="carousel-item active">
+                <div class="home-slideshow-empty">Unable to load vehicles right now.</div>
+            </div>
+        `;
+        indicatorsEl.innerHTML = "";
+    }
+}
+
 function renderVehicles(vehicles) {
     const listEl = document.querySelector("#vehicle-list");
     if (!listEl) return;
@@ -1162,9 +1242,14 @@ function bindAdminEvents() {
 }
 
 async function main() {
+    const isAppPage = Boolean(document.querySelector("#home-available-carousel-inner"));
     const isVehiclePage = Boolean(document.querySelector("#vehicle-list"));
     const isReservationPage = Boolean(document.querySelector("#reservation-list"));
     const isAdminPage = Boolean(document.querySelector("#admin-stats"));
+
+    if (isAppPage) {
+        await loadHomeVehicleSlideshow();
+    }
 
     if (isVehiclePage) {
         bindRentalEvents();
