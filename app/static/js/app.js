@@ -219,6 +219,10 @@ const adminState = {
     sortDirection: "asc",
 };
 
+const reservationViewState = {
+    hideCancelled: localStorage.getItem("hideCancelledReservations") === "true",
+};
+
 function vehicleDisplayName(vehicle) {
     if (!vehicle) return "Unknown Vehicle";
     return `${vehicle.make} ${vehicle.model} (${vehicle.year})`;
@@ -442,17 +446,68 @@ function reservationRowTemplate(reservation) {
     `;
 }
 
+function reservationEmptyStateTemplate(message) {
+    return `
+        <tr>
+            <td colspan="9" class="text-center text-muted py-4">${message}</td>
+        </tr>
+    `;
+}
+
+function updateReservationViewControls() {
+    const toggleButton = document.querySelector("#reservation-toggle-cancelled-view");
+    const note = document.querySelector("#reservation-view-note");
+
+    if (toggleButton) {
+        toggleButton.textContent = reservationViewState.hideCancelled ? "Show Cancelled" : "Hide Cancelled";
+        toggleButton.classList.toggle("btn-outline-secondary", !reservationViewState.hideCancelled);
+        toggleButton.classList.toggle("btn-secondary", reservationViewState.hideCancelled);
+    }
+
+    if (note) {
+        note.textContent = reservationViewState.hideCancelled
+            ? "Cancelled reservations are hidden from view. Click Show Cancelled to bring them back."
+            : "Cancelled reservations are visible in the table.";
+    }
+}
+
+function renderReservationList(reservations) {
+    const listEl = document.querySelector("#reservation-list");
+    if (!listEl) return;
+
+    const visibleReservations = reservationViewState.hideCancelled
+        ? reservations.filter((reservation) => String(reservation.status || "").toLowerCase() !== "cancelled")
+        : reservations;
+
+    if (visibleReservations.length === 0) {
+        listEl.innerHTML = reservationViewState.hideCancelled
+            ? reservationEmptyStateTemplate("No non-cancelled reservations are currently visible.")
+            : reservationEmptyStateTemplate("You do not have any reservations yet.");
+        updateReservationViewControls();
+        return;
+    }
+
+    listEl.innerHTML = visibleReservations.map(reservationRowTemplate).join("");
+    updateReservationViewControls();
+}
+
 async function loadMyReservations() {
     const listEl = document.querySelector("#reservation-list");
     if (!listEl) return;
 
     await ensureVehicleLookup();
     const reservations = await getJson("/api/my-reservations");
-    listEl.innerHTML = reservations.map(reservationRowTemplate).join("");
+    renderReservationList(reservations);
 }
 
 function bindReservationEvents() {
     document.querySelector("#reservation-refresh")?.addEventListener("click", () => {
+        loadMyReservations();
+    });
+
+    document.querySelector("#reservation-toggle-cancelled-view")?.addEventListener("click", () => {
+        reservationViewState.hideCancelled = !reservationViewState.hideCancelled;
+        localStorage.setItem("hideCancelledReservations", String(reservationViewState.hideCancelled));
         loadMyReservations();
     });
 }
