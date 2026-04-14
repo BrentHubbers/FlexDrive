@@ -69,6 +69,7 @@ class AdminSummary(SQLModel):
     vehicles: int
     available_vehicles: int
     reservations: int
+    reviews: int
     by_location: dict[str, int]
 
 
@@ -85,6 +86,8 @@ class VehicleReviewResponse(SQLModel):
     rating: int
     comment: str
     created_at: datetime
+    pinned: bool = False
+    hidden: bool = False
 
 
 class VehicleDetailResponse(VehicleResponse):

@@ -168,6 +168,28 @@
         border: 1px solid rgba(255, 255, 255, 0.12);
     }
 
+    @keyframes reservationFieldFlash {
+        0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.55); }
+        30% { box-shadow: 0 0 0 0.35rem rgba(220, 53, 69, 0.18); }
+        100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+    }
+
+    .reservation-field-flash {
+        border-color: #dc3545 !important;
+        animation: reservationFieldFlash 0.8s ease-in-out;
+    }
+
+    .reservation-invalid-note {
+        color: #dc3545;
+        font-size: 0.875rem;
+        margin-top: 0.35rem;
+        display: none;
+    }
+
+    .reservation-invalid-note.is-visible {
+        display: block;
+    }
+
     @media (max-width: 767.98px) {
         .vehicle-hero .display-5 {
             font-size: 2rem;
@@ -343,6 +365,7 @@
                 </div>
 
                 <div class="modal-body">
+                    <div id="reservation-feedback" class="alert d-none" role="alert"></div>
                     <form id="rental-details-form">
                         <input type="hidden" id="rental-vehicle-id">
                         <input type="hidden" id="rental-pickup-location">

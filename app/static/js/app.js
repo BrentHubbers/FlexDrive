@@ -8,8 +8,17 @@ async function getJson(url, options = {}) {
     });
 
     if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || `Request failed: ${response.status}`);
+        let errorMessage = `Request failed: ${response.status}`;
+        try {
+            const errorBody = await response.json();
+            errorMessage = errorBody.detail || errorBody.message || errorMessage;
+        } catch {
+            const errorText = await response.text();
+            if (errorText) {
+                errorMessage = errorText;
+            }
+        }
+        throw new Error(errorMessage);
     }
 
     return response.json();
@@ -49,6 +58,153 @@ function syncReturnDateConstraints() {
         nextDay.setDate(nextDay.getDate() + 1);
         returnDateEl.value = formatDateInput(nextDay);
     }
+}
+
+function setReservationFeedback(message, type = "danger") {
+    const feedback = document.querySelector("#reservation-feedback");
+    if (!feedback) return;
+
+    feedback.className = `alert alert-${type}`;
+    feedback.textContent = message;
+    feedback.classList.remove("d-none");
+}
+
+function clearReservationFeedback() {
+    const feedback = document.querySelector("#reservation-feedback");
+    if (!feedback) return;
+
+    feedback.textContent = "";
+    feedback.className = "alert d-none";
+}
+
+function getReservationFieldValue(selector) {
+    return document.querySelector(selector)?.value?.trim() || "";
+}
+
+function getReservationField(selector) {
+    return document.querySelector(selector);
+}
+
+function clearReservationFieldState(field) {
+    if (!field) return;
+    field.classList.remove("is-invalid", "reservation-field-flash");
+    field.removeAttribute("aria-invalid");
+}
+
+function markReservationFieldError(selector) {
+    const field = getReservationField(selector);
+    if (!field) return;
+
+    field.classList.add("is-invalid", "reservation-field-flash");
+    field.setAttribute("aria-invalid", "true");
+    window.setTimeout(() => {
+        field.classList.remove("reservation-field-flash");
+    }, 850);
+}
+
+function resetReservationFieldErrors() {
+    const selectors = [
+        "#rental-pickup-date",
+        "#rental-return-date",
+        "#driver-first-name",
+        "#driver-last-name",
+        "#driver-email",
+        "#driver-phone",
+        "#driver-address",
+        "#driver-city",
+        "#driver-license-num",
+        "#driver-license-expiry-date",
+    ];
+
+    for (const selector of selectors) {
+        clearReservationFieldState(getReservationField(selector));
+    }
+}
+
+function validateReservationForm() {
+    const errors = [];
+    const vehicleId = Number(document.querySelector('#rental-vehicle-id').value);
+    const fromValue = getReservationFieldValue('#rental-pickup-date');
+    const toValue = getReservationFieldValue('#rental-return-date');
+    const pickupLocation = getReservationFieldValue('#rental-pickup-location');
+    const returnLocation = getReservationFieldValue('#rental-return-location');
+
+    if (!Number.isFinite(vehicleId) || vehicleId <= 0) {
+        errors.push({ selector: "#rental-vehicle-id", message: "Please select a vehicle before completing the reservation." });
+    }
+
+    if (!fromValue) {
+        errors.push({ selector: "#rental-pickup-date", message: "Please choose a pickup date." });
+    }
+
+    if (!toValue) {
+        errors.push({ selector: "#rental-return-date", message: "Please choose a return date." });
+    }
+
+    const pickupDate = new Date(`${fromValue}T00:00:00`);
+    const returnDate = new Date(`${toValue}T00:00:00`);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (Number.isNaN(pickupDate.getTime()) || Number.isNaN(returnDate.getTime())) {
+        if (fromValue) errors.push({ selector: "#rental-pickup-date", message: "Please enter a valid pickup date." });
+        if (toValue) errors.push({ selector: "#rental-return-date", message: "Please enter a valid return date." });
+    }
+
+    if (pickupDate < today) {
+        errors.push({ selector: "#rental-pickup-date", message: "Pickup date cannot be in the past." });
+    }
+
+    if (returnDate <= pickupDate) {
+        errors.push({ selector: "#rental-return-date", message: "Return date must be after the pickup date." });
+    }
+
+    if (!pickupLocation || !returnLocation) {
+        errors.push({ selector: "#rental-pickup-location", message: "Please select a branch location for pickup and return." });
+    }
+
+    const driverFirstName = getReservationFieldValue('#driver-first-name');
+    const driverLastName = getReservationFieldValue('#driver-last-name');
+    const driverEmail = getReservationFieldValue('#driver-email');
+    const driverPhone = getReservationFieldValue('#driver-phone');
+    const driverAddress = getReservationFieldValue('#driver-address');
+    const driverCity = getReservationFieldValue('#driver-city');
+    const driverLicenseNum = getReservationFieldValue('#driver-license-num');
+    const driverLicenseExpiryDate = getReservationFieldValue('#driver-license-expiry-date');
+
+    if (!driverFirstName) errors.push({ selector: "#driver-first-name", message: "Please enter your first name." });
+    if (!driverLastName) errors.push({ selector: "#driver-last-name", message: "Please enter your last name." });
+    if (!driverEmail) errors.push({ selector: "#driver-email", message: "Please enter your email address." });
+    if (!driverPhone) errors.push({ selector: "#driver-phone", message: "Please enter your phone number." });
+    if (!driverAddress) errors.push({ selector: "#driver-address", message: "Please enter your street address." });
+    if (!driverCity) errors.push({ selector: "#driver-city", message: "Please enter your city or province." });
+    if (!driverLicenseNum) errors.push({ selector: "#driver-license-num", message: "Please enter your driver license number." });
+    if (!driverLicenseExpiryDate) errors.push({ selector: "#driver-license-expiry-date", message: "Please choose your license expiry date." });
+
+    const emailOk = document.querySelector('#driver-email')?.checkValidity?.() ?? true;
+    if (!emailOk) {
+        errors.push({ selector: "#driver-email", message: "Please enter a valid email address." });
+    }
+
+    const phoneDigits = driverPhone.replace(/\D/g, "");
+    if (phoneDigits.length < 7) {
+        errors.push({ selector: "#driver-phone", message: "Please enter a valid phone number." });
+    }
+
+    const licenseExpiry = new Date(`${driverLicenseExpiryDate}T00:00:00`);
+    if (Number.isNaN(licenseExpiry.getTime())) {
+        errors.push({ selector: "#driver-license-expiry-date", message: "Please enter a valid license expiry date." });
+    }
+
+    if (licenseExpiry <= pickupDate) {
+        errors.push({ selector: "#driver-license-expiry-date", message: "Your license must still be valid on the pickup date." });
+    }
+
+    if (errors.length > 0) {
+        return errors;
+    }
+
+    return null;
 }
 
 const rentalState = {
@@ -302,6 +458,8 @@ function bindReservationEvents() {
 }
 
 async function reserveVehicle(vehicleId, location) {
+    clearReservationFeedback();
+    resetReservationFieldErrors();
     document.querySelector('#rental-vehicle-id').value = vehicleId;
     document.querySelector('#rental-pickup-location').value = location;
     document.querySelector('#rental-return-location').value = location;
@@ -323,20 +481,31 @@ async function reserveVehicle(vehicleId, location) {
 }
 
 async function submitReservationWithDriver() {
+    clearReservationFeedback();
+    resetReservationFieldErrors();
+
+    const validationErrors = validateReservationForm();
+    if (validationErrors) {
+        for (const error of validationErrors) {
+            if (error.selector && error.selector !== "#rental-vehicle-id") {
+                markReservationFieldError(error.selector);
+            }
+        }
+
+        const firstError = validationErrors[0];
+        setReservationFeedback(firstError.message, "danger");
+
+        const firstField = firstError.selector ? getReservationField(firstError.selector) : null;
+        if (firstField && firstField.focus) {
+            firstField.focus();
+        }
+        return;
+    }
+
     const vehicleId = Number(document.querySelector('#rental-vehicle-id').value);
     const fromValue = document.querySelector('#rental-pickup-date').value;
     const toValue = document.querySelector('#rental-return-date').value;
     const location = document.querySelector('#rental-pickup-location').value;
-
-    if (!fromValue || !toValue) {
-        alert("Please select pickup and return dates.");
-        return;
-    }
-
-    if (toValue <= fromValue) {
-        alert("Return date must be after pickup date.");
-        return;
-    }
 
     const driver = {
         first_name: document.querySelector('#driver-first-name').value.trim(),
@@ -351,11 +520,6 @@ async function submitReservationWithDriver() {
 
     const hasProtectionPlan = document.querySelector('#driver-protection-plan').checked;
     const hasFlexibleRebooking = document.querySelector('#driver-flexible-rebooking').checked;
-
-    if (!driver.first_name || !driver.phone) {
-        alert("Please enter at least First Name and Phone Number.");
-        return;
-    }
 
     const payload = {
         vehicle_id: vehicleId,
@@ -378,10 +542,10 @@ async function submitReservationWithDriver() {
         const modalEl = document.querySelector('#rentalDetailsModal');
         const modalInstance = bootstrap.Modal.getInstance(modalEl);
         if (modalInstance) modalInstance.hide();
-        alert("Reservation confirmed!");
+        setReservationFeedback("Reservation confirmed!", "success");
         await loadVehicles();
     } catch (err) {
-        alert(`Reservation failed: ${err.message}`);
+        setReservationFeedback(err.message || "Reservation failed.", "danger");
     }
 }
 
@@ -403,10 +567,11 @@ async function cancelReservation(reservationId) {
 
 function reviewItemTemplate(review) {
     const stars = "★".repeat(review.rating) + "☆".repeat(5 - review.rating);
+    const pinnedBadge = review.pinned ? '<span class="badge bg-warning text-dark ms-2">Pinned</span>' : "";
     return `
         <div class="border rounded p-2 mb-2 bg-white">
             <div class="d-flex justify-content-between align-items-center">
-                <strong>${review.reviewer_name}</strong>
+                <div><strong>${review.reviewer_name}</strong>${pinnedBadge}</div>
                 <span class="text-warning">${stars}</span>
             </div>
             <div class="small text-muted">${new Date(review.created_at).toLocaleString()}</div>
@@ -471,6 +636,32 @@ function bindRentalEvents() {
     document.querySelector("#confirm-rental-btn")?.addEventListener("click", submitReservationWithDriver);
     document.querySelector("#rental-pickup-date")?.addEventListener("change", syncReturnDateConstraints);
 
+    document.querySelector("#rental-details-form")?.addEventListener("input", (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement || target instanceof HTMLTextAreaElement)) {
+            return;
+        }
+
+        if (target.id === "rental-pickup-date") {
+            syncReturnDateConstraints();
+        }
+
+        clearReservationFieldState(target);
+    });
+
+    document.querySelector("#rental-details-form")?.addEventListener("change", (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement || target instanceof HTMLTextAreaElement)) {
+            return;
+        }
+
+        if (target.id === "rental-pickup-date") {
+            syncReturnDateConstraints();
+        }
+
+        clearReservationFieldState(target);
+    });
+
     document.addEventListener("click", (event) => {
         const button = event.target.closest(".reserve-btn");
         if (button) {
@@ -511,12 +702,59 @@ async function loadAdminDashboard() {
         summaryCard("Vehicles", summary.vehicles),
         summaryCard("Available", summary.available_vehicles),
         summaryCard("Reservations", summary.reservations),
+        summaryCard("Reviews", summary.reviews),
     ].join("");
 
     byLocation.innerHTML = Object.keys(summary.by_location)
         .sort()
         .map((location) => `<tr><td>${location}</td><td>${summary.by_location[location]}</td></tr>`)
         .join("");
+}
+
+function adminReviewRowTemplate(review) {
+    const vehicle = adminState.fleetById.get(review.vehicle_id);
+    const hiddenLabel = review.hidden ? "Removed" : "Visible";
+    const pinLabel = review.pinned ? "Unpin" : "Pin";
+    const statusClass = review.hidden ? "text-danger" : review.pinned ? "text-warning" : "text-success";
+
+    return `
+        <tr>
+            <td>${review.id}</td>
+            <td>${vehicleDisplayName(vehicle) || `Vehicle #${review.vehicle_id}`}</td>
+            <td>${review.reviewer_name}</td>
+            <td>${"★".repeat(review.rating)}</td>
+            <td>${review.comment}</td>
+            <td><span class="${statusClass}">${hiddenLabel}${review.hidden ? "" : review.pinned ? " / Pinned" : ""}</span></td>
+            <td class="d-flex gap-2 flex-wrap">
+                <button class="btn btn-sm btn-outline-warning admin-toggle-review-pin-btn" data-review-id="${review.id}">${pinLabel}</button>
+                <button class="btn btn-sm btn-outline-danger admin-remove-review-btn" data-review-id="${review.id}">Remove</button>
+            </td>
+        </tr>
+    `;
+}
+
+async function loadAdminReviews() {
+    const listEl = document.querySelector("#admin-review-list");
+    if (!listEl) return;
+
+    const reviews = await getJson("/api/admin/reviews");
+    listEl.innerHTML = reviews.map(adminReviewRowTemplate).join("");
+}
+
+async function toggleAdminReviewPin(reviewId) {
+    await getJson(`/api/admin/reviews/${reviewId}/pin`, {
+        method: "PATCH",
+    });
+
+    await Promise.all([loadAdminDashboard(), loadAdminReviews()]);
+}
+
+async function removeAdminReview(reviewId) {
+    await getJson(`/api/admin/reviews/${reviewId}`, {
+        method: "DELETE",
+    });
+
+    await Promise.all([loadAdminDashboard(), loadAdminReviews()]);
 }
 
 function adminReservationRowTemplate(reservation) {
@@ -696,6 +934,10 @@ function bindAdminEvents() {
         loadAdminReservations();
     });
 
+    document.querySelector("#admin-refresh-reviews")?.addEventListener("click", () => {
+        loadAdminReviews();
+    });
+
     document.querySelector("#admin-add-vehicle-form")?.addEventListener("submit", async (event) => {
         try {
             await addAdminVehicle(event);
@@ -745,6 +987,26 @@ function bindAdminEvents() {
             } catch (err) {
                 alert(`Unable to remove vehicle: ${err.message}`);
             }
+            return;
+        }
+
+        const pinBtn = event.target.closest(".admin-toggle-review-pin-btn");
+        if (pinBtn) {
+            try {
+                await toggleAdminReviewPin(pinBtn.dataset.reviewId);
+            } catch (err) {
+                alert(`Unable to update review: ${err.message}`);
+            }
+            return;
+        }
+
+        const reviewRemoveBtn = event.target.closest(".admin-remove-review-btn");
+        if (reviewRemoveBtn) {
+            try {
+                await removeAdminReview(reviewRemoveBtn.dataset.reviewId);
+            } catch (err) {
+                alert(`Unable to remove review: ${err.message}`);
+            }
         }
     });
 }
@@ -768,7 +1030,7 @@ async function main() {
 
     if (isAdminPage) {
         bindAdminEvents();
-        await Promise.all([loadAdminDashboard(), loadAdminReservations(), loadAdminFleet()]);
+        await Promise.all([loadAdminDashboard(), loadAdminReservations(), loadAdminReviews(), loadAdminFleet()]);
     }
 }
 

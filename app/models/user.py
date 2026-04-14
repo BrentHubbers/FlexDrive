@@ -53,6 +53,8 @@ class VehicleReview(VehicleReviewBase, table=True):
     vehicle_id: int = Field(foreign_key="vehicle.id", index=True)
     user_id: Optional[int] = Field(default=None, foreign_key="user.id")
     created_at: datetime = Field(default_factory=datetime.utcnow)
+    pinned: bool = False
+    hidden: bool = False
 
 
 class ReservationBase(SQLModel):

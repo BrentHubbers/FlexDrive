@@ -204,11 +204,45 @@ async def create_reservation(payload: ReservationCreate, db: SessionDep, user: A
     if not vehicle.available:
         raise HTTPException(status_code=400, detail="Vehicle is not available")
 
+    if not payload.pickup_location or not payload.pickup_location.strip():
+        raise HTTPException(status_code=400, detail="Please choose a pickup location.")
+
+    if not payload.return_location or not payload.return_location.strip():
+        raise HTTPException(status_code=400, detail="Please choose a return location.")
+
+    if not payload.driver:
+        raise HTTPException(status_code=400, detail="Driver information is required.")
+
+    driver = payload.driver
+    if not driver.first_name or not driver.first_name.strip():
+        raise HTTPException(status_code=400, detail="First name is required.")
+    if not driver.last_name or not driver.last_name.strip():
+        raise HTTPException(status_code=400, detail="Last name is required.")
+    if not driver.email or not str(driver.email).strip():
+        raise HTTPException(status_code=400, detail="Email is required.")
+    if not driver.phone or not driver.phone.strip():
+        raise HTTPException(status_code=400, detail="Phone number is required.")
+    if not driver.address or not driver.address.strip():
+        raise HTTPException(status_code=400, detail="Address is required.")
+    if not driver.city or not driver.city.strip():
+        raise HTTPException(status_code=400, detail="City or province is required.")
+    if not driver.license_num or not driver.license_num.strip():
+        raise HTTPException(status_code=400, detail="License number is required.")
+    if not driver.license_expiry_date:
+        raise HTTPException(status_code=400, detail="License expiry date is required.")
+
     start_dt = payload.date_from
     end_dt = payload.date_to
 
+    if start_dt.date() < datetime.utcnow().date():
+        raise HTTPException(status_code=400, detail="Pickup date cannot be in the past.")
+
     if end_dt <= start_dt:
         raise HTTPException(status_code=400, detail="date_to must be after date_from")
+
+    license_expiry_date = driver.license_expiry_date or driver.license_to
+    if license_expiry_date and license_expiry_date <= start_dt.date():
+        raise HTTPException(status_code=400, detail="License must still be valid on the pickup date.")
 
     rental_days = max((end_dt - start_dt).days, 1)
     total_cost = float(vehicle.price_per_day) * rental_days
@@ -240,17 +274,16 @@ async def create_reservation(payload: ReservationCreate, db: SessionDep, user: A
 
     # Create driver record if driver details are provided
     if payload.driver and created.id:
-        license_expiry_date = payload.driver.license_expiry_date or payload.driver.license_to
         driver = Driver(
-            first_name=payload.driver.first_name,
-            last_name=payload.driver.last_name,
-            email=payload.driver.email,
-            phone=payload.driver.phone,
-            address=payload.driver.address,
-            city=payload.driver.city,
-            state=payload.driver.state,
-            license_num=payload.driver.license_num,
-            license_from=payload.driver.license_from,
+            first_name=driver.first_name,
+            last_name=driver.last_name,
+            email=driver.email,
+            phone=driver.phone,
+            address=driver.address,
+            city=driver.city,
+            state=driver.state,
+            license_num=driver.license_num,
+            license_from=driver.license_from,
             license_to=license_expiry_date,
             reservation_id=created.id,
         )
@@ -285,6 +318,35 @@ async def list_all_reservations_as_admin(db: SessionDep, _: AdminDep):
     driver_repo = DriverRepository(db)
     reservations = reservation_repo.get_all()
     return [_to_reservation_response(reservation, driver_repo) for reservation in reservations]
+
+
+@api_router.get("/admin/reviews", response_model=list[VehicleReviewResponse])
+async def list_all_reviews_as_admin(db: SessionDep, _: AdminDep):
+    review_repo = VehicleReviewRepository(db)
+    reviews = review_repo.get_all(include_hidden=True)
+    return [VehicleReviewResponse(**review.model_dump()) for review in reviews]
+
+
+@api_router.patch("/admin/reviews/{review_id}/pin", response_model=VehicleReviewResponse)
+async def pin_review_as_admin(review_id: int, db: SessionDep, _: AdminDep):
+    review_repo = VehicleReviewRepository(db)
+    review = review_repo.get_by_id(review_id)
+    if not review:
+        raise HTTPException(status_code=404, detail="Review not found")
+
+    updated = review_repo.pin(review, not review.pinned)
+    return VehicleReviewResponse(**updated.model_dump())
+
+
+@api_router.delete("/admin/reviews/{review_id}")
+async def remove_review_as_admin(review_id: int, db: SessionDep, _: AdminDep):
+    review_repo = VehicleReviewRepository(db)
+    review = review_repo.get_by_id(review_id)
+    if not review:
+        raise HTTPException(status_code=404, detail="Review not found")
+
+    review_repo.hide(review)
+    return {"message": "Review removed"}
 
 
 @api_router.patch("/admin/reservations/{reservation_id}", response_model=ReservationResponse)
@@ -394,11 +456,13 @@ async def admin_summary(db: SessionDep, _: AdminDep):
     user_repo = UserRepository(db)
     vehicle_repo = VehicleRepository(db)
     reservation_repo = ReservationRepository(db)
+    review_repo = VehicleReviewRepository(db)
 
     users = len(user_repo.get_all_users())
     vehicles = vehicle_repo.count()
     available_vehicles = len(vehicle_repo.get_available())
     reservations = reservation_repo.count()
+    reviews = review_repo.count()
     by_location = vehicle_repo.count_by_location()
 
     return AdminSummary(
@@ -406,5 +470,6 @@ async def admin_summary(db: SessionDep, _: AdminDep):
         vehicles=vehicles,
         available_vehicles=available_vehicles,
         reservations=reservations,
+        reviews=reviews,
         by_location=by_location,
     )

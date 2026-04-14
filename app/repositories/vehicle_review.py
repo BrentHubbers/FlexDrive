@@ -31,13 +31,42 @@ class VehicleReviewRepository:
             self.db.rollback()
             raise
 
-    def get_by_vehicle_id(self, vehicle_id: int) -> list[VehicleReview]:
-        statement = (
-            select(VehicleReview)
-            .where(VehicleReview.vehicle_id == vehicle_id)
-            .order_by(VehicleReview.created_at.desc())
-        )
+    def get_by_vehicle_id(self, vehicle_id: int, include_hidden: bool = False) -> list[VehicleReview]:
+        statement = select(VehicleReview).where(VehicleReview.vehicle_id == vehicle_id)
+        if not include_hidden:
+            statement = statement.where(VehicleReview.hidden == False)
+        statement = statement.order_by(VehicleReview.pinned.desc(), VehicleReview.created_at.desc())
         return self.db.exec(statement).all()
+
+    def get_all(self, include_hidden: bool = True) -> list[VehicleReview]:
+        statement = select(VehicleReview)
+        if not include_hidden:
+            statement = statement.where(VehicleReview.hidden == False)
+        statement = statement.order_by(VehicleReview.pinned.desc(), VehicleReview.created_at.desc())
+        return self.db.exec(statement).all()
+
+    def get_by_id(self, review_id: int) -> VehicleReview | None:
+        return self.db.get(VehicleReview, review_id)
+
+    def update(self, review: VehicleReview) -> VehicleReview:
+        try:
+            self.db.add(review)
+            self.db.commit()
+            self.db.refresh(review)
+            return review
+        except Exception as exc:
+            logger.error(f"An error occurred while updating vehicle review: {exc}")
+            self.db.rollback()
+            raise
+
+    def pin(self, review: VehicleReview, pinned: bool) -> VehicleReview:
+        review.pinned = pinned
+        return self.update(review)
+
+    def hide(self, review: VehicleReview) -> VehicleReview:
+        review.hidden = True
+        review.pinned = False
+        return self.update(review)
 
     def count(self) -> int:
         statement = select(func.count()).select_from(VehicleReview)

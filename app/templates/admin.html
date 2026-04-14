@@ -97,6 +97,31 @@
 
       <div class="card shadow-sm mt-4">
          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+               <h5 class="card-title mb-0">Review Moderation</h5>
+               <button class="btn btn-outline-secondary btn-sm" id="admin-refresh-reviews">Refresh</button>
+            </div>
+            <div class="table-responsive">
+               <table class="table table-striped align-middle">
+                  <thead>
+                     <tr>
+                        <th>ID</th>
+                        <th>Vehicle</th>
+                        <th>User</th>
+                        <th>Rating</th>
+                        <th>Comment</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                     </tr>
+                  </thead>
+                  <tbody id="admin-review-list"></tbody>
+               </table>
+            </div>
+         </div>
+      </div>
+
+      <div class="card shadow-sm mt-4">
+         <div class="card-body">
             <h5 class="card-title mb-3">Fleet Management</h5>
             <form id="admin-add-vehicle-form" class="row g-2 mb-4">
                <div class="col-md-2"><input class="form-control" name="make" placeholder="Make" required /></div>
